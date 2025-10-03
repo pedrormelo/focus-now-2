@@ -196,30 +196,57 @@ app.get('/api/estatisticas', authenticateToken, async (req, res) => {
     }
 });
 
-// Recuperação de Senha (simplificada)
-app.post('/api/recuperar-senha', async (req, res) => {
+// Rota para solicitar a recuperação de senha
+app.post('/api/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
-
         const [users] = await db.execute('SELECT id FROM usuarios WHERE email = ?', [email]);
+
         if (users.length === 0) {
-            return res.json({ message: 'Se o email existir, enviaremos instruções' });
+            return res.status(404).json({ error: 'Usuário não encontrado' });
         }
 
-        // Em produção, enviaria email real
+        const userId = users[0].id;
         const token = jwt.sign(
-            { userId: users[0].id, type: 'password_reset' },
+            { userId, type: 'password_reset' },
             process.env.JWT_SECRET || 'focusnow_secret',
             { expiresIn: '1h' }
         );
 
-        console.log(`Link de recuperação para ${email}: http://localhost:3000/reset-password?token=${token}`);
+        // Em um projeto real, você enviaria um e-mail com o link de recuperação
+        // Para o MVP, vamos retornar o token
+        res.json({ message: 'Token de recuperação gerado', token });
 
-        res.json({ message: 'Instruções enviadas para seu email' });
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao processar recuperação' });
+        res.status(500).json({ error: 'Erro ao processar a solicitação' });
     }
 });
+
+// Rota para redefinir a senha
+app.post('/api/reset-password', async (req, res) => {
+    try {
+        const { token, novaSenha } = req.body;
+
+        if (!token || !novaSenha) {
+            return res.status(400).json({ error: 'Token e nova senha são obrigatórios' });
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'focusnow_secret');
+
+        if (decoded.type !== 'password_reset') {
+            return res.status(400).json({ error: 'Token inválido' });
+        }
+
+        const hashedPassword = await bcrypt.hash(novaSenha, 10);
+        await db.execute('UPDATE usuarios SET senha = ? WHERE id = ?', [hashedPassword, decoded.userId]);
+
+        res.json({ message: 'Senha redefinida com sucesso' });
+
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao redefinir a senha' });
+    }
+});
+
 
 const PORT = process.env.PORT || 3000;
 connectDB().then(() => {

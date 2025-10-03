@@ -1,9 +1,10 @@
-import type { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
-  appId: 'io.ionic.starter',
-  appName: 'Focus Now',
-  webDir: 'www'
-};
+const config = {
+    appId: 'com.focusnow.app',
+    appName: 'FocusNow',
+    webDir: 'www',
+    server: {
+        androidScheme: 'https'
+    }
+} as const;
 
 export default config;

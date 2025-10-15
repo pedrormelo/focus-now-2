@@ -38,10 +38,81 @@ const authenticateToken = (req, res, next) => {
 let db;
 async function connectDB() {
     try {
+        // Primeiro conecta sem especificar o banco para criar se necessário
+        const connectionWithoutDB = await mysql.createConnection({
+            host: dbConfig.host,
+            user: dbConfig.user,
+            password: dbConfig.password
+        });
+
+        // Criar database se não existir
+        await connectionWithoutDB.execute(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
+        console.log(`Database '${dbConfig.database}' criado/verificado com sucesso`);
+        
+        // Fechar conexão temporária
+        await connectionWithoutDB.end();
+
+        // Agora conectar ao database específico
         db = await mysql.createConnection(dbConfig);
-        console.log('Conectado ao MySQL');
+        console.log('Conectado ao MySQL e database focusnow');
+
+        // Criar tabelas se não existirem
+        await createTables();
+        
     } catch (error) {
         console.error('Erro ao conectar com o banco:', error);
+    }
+}
+
+// Função para criar tabelas automaticamente
+async function createTables() {
+    try {
+        // Tabela usuarios
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS usuarios (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                nome VARCHAR(100) NOT NULL,
+                email VARCHAR(150) UNIQUE NOT NULL,
+                senha VARCHAR(255) NOT NULL,
+                objetivo VARCHAR(50),
+                nivel INT DEFAULT 1,
+                xp INT DEFAULT 0,
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Tabela ciclos_pomodoro
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS ciclos_pomodoro (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                usuario_id INT,
+                tipo ENUM('foco', 'pausa_curta', 'pausa_longa'),
+                duracao INT,
+                completado BOOLEAN DEFAULT false,
+                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+            )
+        `);
+
+        // Tabela configuracoes
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS configuracoes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                usuario_id INT UNIQUE,
+                tempo_foco INT DEFAULT 25,
+                tempo_pausa_curta INT DEFAULT 5,
+                tempo_pausa_longa INT DEFAULT 15,
+                intervalo_pausa_longa INT DEFAULT 4,
+                tema VARCHAR(20) DEFAULT 'claro',
+                notificacoes BOOLEAN DEFAULT true,
+                FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+            )
+        `);
+
+        console.log('✅ Todas as tabelas criadas/verificadas com sucesso');
+        
+    } catch (error) {
+        console.error('Erro ao criar tabelas:', error);
     }
 }
 

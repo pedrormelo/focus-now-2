@@ -10,6 +10,8 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// DB connection will be initialized after configuration and function definitions
+
 // Configuração do Banco
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
@@ -118,6 +120,8 @@ async function createTables() {
 
 // Rotas de Autenticação
 app.post('/api/register', async (req, res) => {
+    // Debug log (can be removed later)
+    // console.log('Register body:', req.body);
     try {
         const { nome, email, senha, objetivo } = req.body;
 
@@ -142,7 +146,7 @@ app.post('/api/register', async (req, res) => {
             { expiresIn: '24h' }
         );
 
-        res.json({ token, user: { id: result.insertId, nome, email, objetivo, nivel: 1, xp: 0 } });
+    res.json({ token, user: { id: result.insertId, nome, email, objetivo, nivel: 1, xp: 0 } });
     } catch (error) {
         res.status(500).json({ error: 'Erro interno do servidor' });
     }

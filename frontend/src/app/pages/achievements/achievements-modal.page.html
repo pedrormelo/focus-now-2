@@ -1,0 +1,22 @@
+<ion-header>
+    <ion-toolbar>
+        <ion-title>Conquistas</ion-title>
+        <ion-buttons slot="end">
+            <ion-button (click)="close()">Fechar</ion-button>
+        </ion-buttons>
+    </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+    <ion-list>
+        <ion-item *ngFor="let conquista of conquistas" [class]="conquista.alcançada ? 'alcançada' : ''">
+            <ion-icon [name]="conquista.alcançada ? 'trophy' : 'trophy-outline'"
+                [color]="conquista.alcançada ? 'warning' : 'medium'" slot="start">
+            </ion-icon>
+            <ion-label>
+                <h3>{{ conquista.nome }}</h3>
+                <p>{{ conquista.descricao }}</p>
+            </ion-label>
+        </ion-item>
+    </ion-list>
+</ion-content>

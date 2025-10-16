@@ -1,0 +1,60 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>FocusNow</ion-title>
+    <ion-buttons slot="end">
+      <ion-button routerLink="/progress">
+        <ion-icon name="stats-chart"></ion-icon>
+      </ion-button>
+      <ion-button routerLink="/settings">
+        <ion-icon name="settings"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="timer-container">
+    <div class="timer-display">
+      <h1>{{ formatTime(currentTime) }}</h1>
+      <p>{{ timerType === 'pomodoro' ? 'Hora de Focar' : 'Hora da Pausa' }}</p>
+    </div>
+
+    <div class="timer-controls">
+      <ion-button
+        *ngIf="!isRunning"
+        expand="block"
+        color="primary"
+        (click)="startTimer()"
+      >
+        START
+      </ion-button>
+
+      <ion-button
+        *ngIf="isRunning"
+        expand="block"
+        color="warning"
+        (click)="pauseTimer()"
+      >
+        PAUSE
+      </ion-button>
+
+      <ion-button expand="block" color="medium" (click)="stopTimer()">
+        STOP
+      </ion-button>
+    </div>
+
+    <div class="cycle-selector">
+      <ion-segment [(ngModel)]="timerType" (ionChange)="resetTimer()">
+        <ion-segment-button value="pomodoro">
+          <ion-label>Foco</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="shortBreak">
+          <ion-label>Pausa Curta</ion-label>
+        </ion-segment-button>
+        <ion-segment-button value="longBreak">
+          <ion-label>Pausa Longa</ion-label>
+        </ion-segment-button>
+      </ion-segment>
+    </div>
+  </div>
+</ion-content>

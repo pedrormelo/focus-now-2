@@ -1,0 +1,63 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-back-button></ion-back-button>
+    </ion-buttons>
+    <ion-title>Cadastro</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="register-container">
+    <h1>FocusNow</h1>
+    <p class="subtitle">Crie sua conta</p>
+
+    <ion-item>
+      <ion-label position="stacked">Nome</ion-label>
+      <ion-input [(ngModel)]="userData.nome" placeholder="Digite seu nome...">
+      </ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Email</ion-label>
+      <ion-input
+        type="email"
+        [(ngModel)]="userData.email"
+        placeholder="Digite seu email..."
+      >
+      </ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Senha</ion-label>
+      <ion-input
+        type="password"
+        [(ngModel)]="userData.senha"
+        placeholder="Digite sua senha..."
+      >
+      </ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Qual seu objetivo?</ion-label>
+      <ion-select [(ngModel)]="userData.objetivo" placeholder="Selecione...">
+        <ion-select-option *ngFor="let obj of objetivos" [value]="obj">
+          {{ obj }}
+        </ion-select-option>
+      </ion-select>
+    </ion-item>
+
+    <ion-button
+      expand="block"
+      class="register-btn"
+      (click)="register()"
+      [disabled]="!userData.nome || !userData.email || !userData.senha || !userData.objetivo"
+    >
+      Criar Conta
+    </ion-button>
+
+    <div class="links">
+      <a (click)="goToLogin()">Já tenho uma conta</a>
+    </div>
+  </div>
+</ion-content>

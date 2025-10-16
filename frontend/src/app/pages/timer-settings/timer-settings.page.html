@@ -1,0 +1,72 @@
+<ion-header>
+    <ion-toolbar>
+        <ion-title>Configurações do Timer</ion-title>
+        <ion-buttons slot="end">
+            <ion-button (click)="cancel()">Cancelar</ion-button>
+        </ion-buttons>
+    </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+    <ion-list>
+        <ion-list-header>
+            <ion-label>Tempo (minutos)</ion-label>
+        </ion-list-header>
+
+        <ion-item>
+            <ion-label>Pomodoro</ion-label>
+            <div slot="end" class="number-input">
+                <ion-button fill="clear" (click)="decrement('pomodoro')">-</ion-button>
+                <ion-text>{{ timerConfig.pomodoro }}</ion-text>
+                <ion-button fill="clear" (click)="increment('pomodoro')">+</ion-button>
+            </div>
+        </ion-item>
+
+        <ion-item>
+            <ion-label>Pausa Curta</ion-label>
+            <div slot="end" class="number-input">
+                <ion-button fill="clear" (click)="decrement('shortBreak')">-</ion-button>
+                <ion-text>{{ timerConfig.shortBreak }}</ion-text>
+                <ion-button fill="clear" (click)="increment('shortBreak')">+</ion-button>
+            </div>
+        </ion-item>
+
+        <ion-item>
+            <ion-label>Pausa Longa</ion-label>
+            <div slot="end" class="number-input">
+                <ion-button fill="clear" (click)="decrement('longBreak')">-</ion-button>
+                <ion-text>{{ timerConfig.longBreak }}</ion-text>
+                <ion-button fill="clear" (click)="increment('longBreak')">+</ion-button>
+            </div>
+        </ion-item>
+
+        <ion-list-header>
+            <ion-label>Intervalo de Pausa Longa</ion-label>
+        </ion-list-header>
+
+        <ion-item>
+            <ion-label>Ciclos até pausa longa</ion-label>
+            <div slot="end" class="number-input">
+                <ion-button fill="clear" (click)="decrement('longBreakInterval')">-</ion-button>
+                <ion-text>{{ timerConfig.longBreakInterval }}</ion-text>
+                <ion-button fill="clear" (click)="increment('longBreakInterval')">+</ion-button>
+            </div>
+        </ion-item>
+
+        <ion-list-header>
+            <ion-label>Som do Alarme</ion-label>
+        </ion-list-header>
+
+        <ion-item>
+            <ion-select [(ngModel)]="timerConfig.alarmSound" interface="action-sheet">
+                <ion-select-option *ngFor="let sound of alarmSounds" [value]="sound">
+                    {{ sound }}
+                </ion-select-option>
+            </ion-select>
+        </ion-item>
+    </ion-list>
+
+    <div class="ion-padding">
+        <ion-button expand="block" (click)="save()">OK</ion-button>
+    </div>
+</ion-content>

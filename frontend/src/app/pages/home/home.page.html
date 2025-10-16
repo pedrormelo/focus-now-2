@@ -1,0 +1,62 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>FocusNow</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="logout()">
+        <ion-icon name="log-out-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="welcome-section">
+    <h2>Nível {{ user?.nivel || 1 }}</h2>
+    <p>{{ user?.xp || 0 }}XP</p>
+    <ion-progress-bar [value]="(user?.xp % 100) / 100"></ion-progress-bar>
+  </div>
+
+  <div class="welcome-message">
+    <h1>Bem-vindo, {{ user?.nome || 'Usuário' }}</h1>
+    <p>Hora de focar.</p>
+  </div>
+
+  <div class="stats-card">
+    <h3>{{ estatisticas.dias_sequencia || 0 }} dias de FOCO</h3>
+    <p>Não perca sua sequência</p>
+  </div>
+
+  <div class="actions">
+    <ion-button expand="block" size="large" (click)="startTimer()">
+      <ion-icon name="play-circle" slot="start"></ion-icon>
+      Ir para Timer
+    </ion-button>
+
+    <ion-button expand="block" fill="outline" (click)="viewProgress()">
+      <ion-icon name="stats-chart" slot="start"></ion-icon>
+      Ver Progresso
+    </ion-button>
+
+    <ion-button expand="block" fill="outline" (click)="viewSettings()">
+      <ion-icon name="settings" slot="start"></ion-icon>
+      Configurações
+    </ion-button>
+  </div>
+
+  <div class="quick-stats">
+    <ion-row>
+      <ion-col size="6">
+        <div class="stat-item">
+          <h3>{{ estatisticas.total_minutos || 0 }}</h3>
+          <p>Minutos em Foco</p>
+        </div>
+      </ion-col>
+      <ion-col size="6">
+        <div class="stat-item">
+          <h3>{{ estatisticas.ciclos_completados || 0 }}</h3>
+          <p>Ciclos Completos</p>
+        </div>
+      </ion-col>
+    </ion-row>
+  </div>
+</ion-content>

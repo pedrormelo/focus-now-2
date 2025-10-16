@@ -1,0 +1,41 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>FocusNow</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+  <div class="login-container">
+    <h1>FocusNow</h1>
+    <p class="subtitle">Olá! Me fale sobre você</p>
+
+    <ion-item>
+      <ion-label position="stacked">Email</ion-label>
+      <ion-input
+        type="email"
+        [(ngModel)]="credentials.email"
+        placeholder="Digite seu email..."
+      >
+      </ion-input>
+    </ion-item>
+
+    <ion-item>
+      <ion-label position="stacked">Senha</ion-label>
+      <ion-input
+        type="password"
+        [(ngModel)]="credentials.senha"
+        placeholder="Digite sua senha..."
+      >
+      </ion-input>
+    </ion-item>
+
+    <ion-button expand="block" class="login-btn" (click)="login()">
+      Entrar
+    </ion-button>
+
+    <div class="links">
+      <a (click)="recoverPassword()">Esqueci minha senha</a>
+      <a (click)="goToRegister()">Criar conta</a>
+    </div>
+  </div>
+</ion-content>

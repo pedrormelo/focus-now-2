@@ -1,62 +1,63 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>FocusNow</ion-title>
-    <ion-buttons slot="end">
-      <ion-button (click)="logout()">
-        <ion-icon name="log-out-outline"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-  </ion-toolbar>
-</ion-header>
+<ion-content [fullscreen]="true" class="bg-background text-text-primary">
+  <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6 px-5 py-6">
+    <!-- Header with Logo and actions -->
+    <div class="flex items-center justify-between">
+      <app-logo height="28"></app-logo>
+      <div class="flex items-center gap-2">
+        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary">
+          <ion-icon name="information-circle-outline"></ion-icon>
+        </button>
+        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="viewSettings()">
+          <ion-icon name="settings-outline"></ion-icon>
+        </button>
+      </div>
+    </div>
 
-<ion-content class="ion-padding">
-  <div class="welcome-section">
-    <h2>Nível {{ user?.nivel || 1 }}</h2>
-    <p>{{ user?.xp || 0 }}XP</p>
-    <ion-progress-bar [value]="(user?.xp % 100) / 100"></ion-progress-bar>
-  </div>
-
-  <div class="welcome-message">
-    <h1>Bem-vindo, {{ user?.nome || 'Usuário' }}</h1>
-    <p>Hora de focar.</p>
-  </div>
-
-  <div class="stats-card">
-    <h3>{{ estatisticas.dias_sequencia || 0 }} dias de FOCO</h3>
-    <p>Não perca sua sequência</p>
-  </div>
-
-  <div class="actions">
-    <ion-button expand="block" size="large" (click)="startTimer()">
-      <ion-icon name="play-circle" slot="start"></ion-icon>
-      Ir para Timer
-    </ion-button>
-
-    <ion-button expand="block" fill="outline" (click)="viewProgress()">
-      <ion-icon name="stats-chart" slot="start"></ion-icon>
-      Ver Progresso
-    </ion-button>
-
-    <ion-button expand="block" fill="outline" (click)="viewSettings()">
-      <ion-icon name="settings" slot="start"></ion-icon>
-      Configurações
-    </ion-button>
-  </div>
-
-  <div class="quick-stats">
-    <ion-row>
-      <ion-col size="6">
-        <div class="stat-item">
-          <h3>{{ estatisticas.total_minutos || 0 }}</h3>
-          <p>Minutos em Foco</p>
+    <!-- User level card -->
+    <div class="rounded-3xl border border-surface-border bg-surface/90 p-5">
+      <div class="flex items-center justify-between text-sm text-text-secondary">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full border-2 border-brand-gradientStart">
+            <ion-icon name="person-outline"></ion-icon>
+          </div>
+          <div class="text-text-primary"><span class="font-medium">{{ user?.nome || 'Usuário' }}</span> Nível {{ user?.nivel || 1 }}</div>
         </div>
-      </ion-col>
-      <ion-col size="6">
-        <div class="stat-item">
-          <h3>{{ estatisticas.ciclos_completados || 0 }}</h3>
-          <p>Ciclos Completos</p>
+        <div class="font-medium text-brand-accent">{{ (user?.xp || 0) }}XP</div>
+      </div>
+      <div class="mt-3 h-3 rounded-full bg-surface-subtle">
+        <div class="h-3 rounded-full bg-gradient-to-r from-brand-gradientStart to-brand-gradientEnd" [style.width.%]="((user?.xp || 0) % 100)"></div>
+      </div>
+    </div>
+
+    <!-- Welcome text -->
+    <div class="py-6">
+      <p class="text-2xl text-text-secondary">Bem-vindo, <span class="text-text-primary font-semibold">{{ user?.nome || 'Usuário' }}</span></p>
+      <h1 class="text-4xl font-normal">Hora de <span class="font-bold">focar</span>.</h1>
+    </div>
+
+    <!-- Streak + CTA card -->
+    <div class="rounded-3xl border-surface-border bg-surface/90 p-6">
+      <div class="flex items-center gap-3">
+        <ion-icon name="flame-outline" class="text-brand-accent text-2xl"></ion-icon>
+        <div>
+          <div><span class="text-xl font-semibold">{{ estatisticas.dias_sequencia || 0 }}</span> <span class="text-xl">dias de <span class="font-extrabold">FOCO</span></span></div>
+          <p class="text-sm text-text-secondary -mt-1">Não perca sua sequência</p>
         </div>
-      </ion-col>
-    </ion-row>
+      </div>
+      <button class="mt-5 w-full rounded-2xl bg-brand-accent px-4 py-3 text-base font-semibold text-white shadow-spotlight" (click)="startTimer()">Ir para Timer</button>
+    </div>
+
+    <!-- Bottom nav actions (optional quick actions) -->
+    <div class="mt-auto grid grid-cols-3 gap-3 rounded-3xl border border-surface-border bg-surface/90 p-3">
+      <button class="flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-brand-accent" (click)="viewProgress()">
+        <ion-icon name="home-outline"></ion-icon>
+      </button>
+      <button class="flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-text-primary" (click)="startTimer()">
+        <ion-icon name="timer-outline"></ion-icon>
+      </button>
+      <button class="flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-text-primary" (click)="viewProgress()">
+        <ion-icon name="star-outline"></ion-icon>
+      </button>
+    </div>
   </div>
 </ion-content>

@@ -59,3 +59,8 @@ ion-item {
     font-weight: bold;
   }
 }
+
+/* Force objective icons to white regardless of source color */
+.objective-icon {
+  filter: invert(1) brightness(1000%);
+}

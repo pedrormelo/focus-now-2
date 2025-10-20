@@ -1,41 +1,88 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>FocusNow</ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content [fullscreen]="true" class="bg-background text-text-primary">
+  <div class="relative mx-auto flex min-h-full w-full max-w-5xl flex-col justify-between gap-12 px-6 py-12 lg:flex-row lg:items-center lg:px-12 xl:px-16">
+    <div class="space-y-6 text-center lg:max-w-xl lg:text-left">
+      <p class="text-xs font-semibold uppercase tracking-[0.45em] text-brand-gradientStart">FocusNow</p>
+      <h1 class="text-4xl font-semibold leading-tight md:text-5xl">
+        Retome o controle do seu tempo
+      </h1>
+      <p class="text-base text-text-secondary">
+        Entre para acompanhar seus ciclos de foco, metas personalizadas e evolução diária rumo a uma rotina mais produtiva.
+      </p>
+      <div class="flex flex-col items-center gap-4 text-sm text-text-muted sm:flex-row sm:justify-center lg:justify-start">
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-2 w-2 rounded-full bg-brand-gradientEnd"></span>
+          Sessões guiadas
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="inline-flex h-2 w-2 rounded-full bg-brand-accent"></span>
+          Painéis em tempo real
+        </div>
+      </div>
+    </div>
 
-<ion-content class="ion-padding">
-  <div class="login-container">
-    <h1>FocusNow</h1>
-    <p class="subtitle">Olá! Me fale sobre você</p>
+    <div class="relative w-full max-w-md self-center">
+      <div class="absolute inset-x-10 -top-24 h-56 rounded-full bg-gradient-to-r from-brand-gradientStart via-brand-accent to-brand-gradientEnd opacity-20 blur-3xl"></div>
+      <div class="relative overflow-hidden rounded-3xl border border-surface-border bg-surface/90 p-8 shadow-spotlight backdrop-blur">
+        <div class="mb-8 space-y-2">
+          <h2 class="text-2xl font-semibold">Entrar</h2>
+          <p class="text-sm text-text-secondary">Use suas credenciais FocusNow para continuar</p>
+        </div>
 
-    <ion-item>
-      <ion-label position="stacked">Email</ion-label>
-      <ion-input
-        type="email"
-        [(ngModel)]="credentials.email"
-        placeholder="Digite seu email..."
-      >
-      </ion-input>
-    </ion-item>
+        <form class="space-y-6" (ngSubmit)="login()">
+          <div class="space-y-2">
+            <label for="email" class="text-sm font-medium text-text-primary">Email</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              [(ngModel)]="credentials.email"
+              required
+              placeholder="Digite seu email"
+              class="w-full rounded-2xl border border-surface-border bg-surface-subtle/60 px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-gradientStart focus:outline-none focus:ring-2 focus:ring-brand-gradientStart focus:ring-offset-0"
+            />
+          </div>
 
-    <ion-item>
-      <ion-label position="stacked">Senha</ion-label>
-      <ion-input
-        type="password"
-        [(ngModel)]="credentials.senha"
-        placeholder="Digite sua senha..."
-      >
-      </ion-input>
-    </ion-item>
+          <div class="space-y-2">
+            <label for="password" class="text-sm font-medium text-text-primary">Senha</label>
+            <input
+              id="password"
+              name="senha"
+              type="password"
+              autocomplete="current-password"
+              [(ngModel)]="credentials.senha"
+              required
+              placeholder="Digite sua senha"
+              class="w-full rounded-2xl border border-surface-border bg-surface-subtle/60 px-4 py-3 text-sm text-text-primary placeholder:text-text-muted focus:border-brand-gradientStart focus:outline-none focus:ring-2 focus:ring-brand-gradientStart focus:ring-offset-0"
+            />
+          </div>
 
-    <ion-button expand="block" class="login-btn" (click)="login()">
-      Entrar
-    </ion-button>
+          <button
+            type="submit"
+            class="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-brand-gradientStart via-brand-accent to-brand-gradientEnd px-4 py-3 text-base font-semibold text-white shadow-spotlight transition-all duration-200 hover:scale-[1.01] focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-gradientStart/40"
+          >
+            Entrar
+            <span class="ml-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/15 text-sm font-semibold transition-transform group-hover:translate-x-1">→</span>
+          </button>
+        </form>
 
-    <div class="links">
-      <a (click)="recoverPassword()">Esqueci minha senha</a>
-      <a (click)="goToRegister()">Criar conta</a>
+        <div class="mt-8 grid gap-2 text-sm text-text-muted sm:grid-cols-2">
+          <button
+            type="button"
+            class="rounded-xl px-2 py-2 text-left transition-colors hover:text-brand-gradientStart"
+            (click)="recoverPassword()"
+          >
+            Esqueci minha senha
+          </button>
+          <button
+            type="button"
+            class="rounded-xl px-2 py-2 text-left transition-colors hover:text-brand-gradientStart sm:text-right"
+            (click)="goToRegister()"
+          >
+            Criar conta
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </ion-content>

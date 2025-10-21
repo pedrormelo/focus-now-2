@@ -10,6 +10,7 @@ const routes: Routes = [
   { path: 'timer', loadComponent: () => import('./pages/timer/timer.page').then(m => m.TimerPage) },
   { path: 'progress', loadComponent: () => import('./pages/progress/progress.page').then(m => m.ProgressPage) },
   { path: 'settings', loadComponent: () => import('./pages/settings/settings.page').then(m => m.SettingsPage) },
+  { path: 'info', loadComponent: () => import('./pages/info/info.page').then(m => m.InfoPage) },
   {
     path: 'tabs',
     loadChildren: () => import('./tabs/tabs.module').then(m => m.TabsPageModule)

@@ -1,61 +1,112 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-back-button></ion-back-button>
-    </ion-buttons>
-    <ion-title>Progresso</ion-title>
-  </ion-toolbar>
-</ion-header>
-
-<ion-content class="ion-padding">
-  <div class="stats-grid">
-    <div class="stat-card" (click)="openAchievements()">
-      <h3>{{ getConquistasAlcancadas() }}</h3>
-      <p>Conquistas Alcançadas</p>
+<ion-content [fullscreen]="true" class="bg-background text-text-primary">
+  <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6 px-5 py-6">
+    <!-- Header with Logo -->
+    <div class="flex items-center justify-between">
+      <app-logo height="28"></app-logo>
+      <div class="flex items-center gap-2">
+        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="openAchievements()" aria-label="Conquistas">
+          <ion-icon name="trophy-outline"></ion-icon>
+        </button>
+        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" aria-label="Configurações">
+          <ion-icon name="settings-outline"></ion-icon>
+        </button>
+      </div>
     </div>
 
-    <div class="stat-card">
-      <h3>{{ getMusicasEncontradas() }}</h3>
-      <p>Músicas Encontradas</p>
+    <!-- Title -->
+    <h1 class="text-4xl font-bold">Progresso</h1>
+
+    <!-- Metrics cards -->
+    <div class="space-y-4">
+      <!-- Conquistas -->
+      <div class="rounded-3xl border border-surface-border bg-surface/90 p-4">
+        <div class="flex items-center gap-4">
+          <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-brand-accent/80 bg-surface-subtle">
+            <ion-icon name="trophy-outline" class="text-2xl"></ion-icon>
+          </div>
+          <div class="flex-1">
+            <div class="text-xl font-semibold">Conquistas</div>
+            <div class="text-text-secondary">{{ getConquistasAlcancadas() }} Alcançadas</div>
+            <div class="mt-2 h-3 rounded-full bg-surface-subtle">
+              <div class="h-3 rounded-full bg-gradient-to-r from-brand-gradientStart to-brand-gradientEnd" [style.width.%]="achievementsPercent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Músicas e Sons -->
+      <div class="rounded-3xl border border-surface-border bg-surface/90 p-4">
+        <div class="flex items-center gap-4">
+          <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-brand-accent/80 bg-surface-subtle">
+            <ion-icon name="musical-notes-outline" class="text-2xl"></ion-icon>
+          </div>
+          <div class="flex-1">
+            <div class="text-xl font-semibold">Músicas e Sons</div>
+            <div class="text-text-secondary">{{ getMusicasEncontradas() }} Encontradas</div>
+            <div class="mt-2 h-3 rounded-full bg-surface-subtle">
+              <div class="h-3 rounded-full bg-gradient-to-r from-brand-gradientStart to-brand-gradientEnd" [style.width.%]="musicPercent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Horas em Foco -->
+      <div class="rounded-3xl border border-surface-border bg-surface/90 p-4">
+        <div class="flex items-center gap-4">
+          <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-brand-accent/80 bg-surface-subtle">
+            <ion-icon name="flash-outline" class="text-2xl"></ion-icon>
+          </div>
+          <div class="flex-1">
+            <div class="text-xl font-semibold">Horas em Foco</div>
+            <div class="text-text-secondary">{{ avgFocusHoursPerDay || 0 }} horas/dia</div>
+            <div class="mt-2 h-3 rounded-full bg-surface-subtle">
+              <div class="h-3 rounded-full bg-gradient-to-r from-brand-gradientStart to-brand-gradientEnd" [style.width.%]="focusHoursPercent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="stat-card">
-      <h3>{{ estatisticas.total_minutos || 0 | number:'1.0-0' }}</h3>
-      <p>Minutos em Foco</p>
+    <!-- Streak card -->
+    <div class="rounded-3xl border border-surface-border bg-surface/90 p-6">
+      <div class="flex items-center gap-3">
+        <ion-icon name="flame-outline" class="text-brand-accent text-2xl"></ion-icon>
+        <div>
+          <div class="text-xl"><span class="mr-2 text-2xl font-semibold">{{ estatisticas.dias_sequencia || 0 }}</span>dias!</div>
+          <p class="-mt-1 text-sm text-text-secondary">Sequência de <span class="font-extrabold">FOCO</span></p>
+        </div>
+      </div>
     </div>
 
-    <div class="stat-card">
-      <h3>{{ estatisticas.dias_sequencia || 0 }}</h3>
-      <p>Dias de Sequência</p>
+    <!-- Month label pill -->
+    <div class="mx-auto w-max rounded-full bg-surface-subtle px-4 py-1 text-sm">
+      <span class="text-text-secondary">Dias de </span><span class="font-semibold">foco</span> em {{ monthLabel }}
     </div>
-  </div>
 
-  <ion-list>
-    <ion-list-header>
-      <ion-label>Músicas e Sons</ion-label>
-    </ion-list-header>
+    <!-- Calendar -->
+    <div class="pb-16">
+      <div class="grid grid-cols-7 text-center text-sm text-text-secondary">
+        <div *ngFor="let d of daysOfWeek" class="py-1">{{ d }}</div>
+      </div>
+      <div class="grid grid-cols-7 gap-y-3 text-center">
+        <ng-container *ngFor="let week of weeks">
+          <ng-container *ngFor="let cell of week">
+            <div class="flex h-10 items-center justify-center">
+              <ng-container *ngIf="cell.date; else empty">
+                <span [ngClass]="cell.focused ? 'rounded-md bg-brand-accent px-2 py-1 text-white' : 'text-text-primary'">
+                  {{ cell.date?.getDate() }}
+                </span>
+              </ng-container>
+              <ng-template #empty>
+                <span></span>
+              </ng-template>
+            </div>
+          </ng-container>
+        </ng-container>
+      </div>
+    </div>
 
-    <ion-item
-      *ngFor="let musica of musicas"
-      [class]="musica.encontrada ? 'encontrada' : ''"
-    >
-      <ion-label>
-        <h3>{{ musica.nome }}</h3>
-        <p>{{ musica.artista }}</p>
-      </ion-label>
-      <ion-icon
-        *ngIf="musica.encontrada"
-        name="checkmark-circle"
-        color="success"
-      >
-      </ion-icon>
-      <ion-icon *ngIf="!musica.encontrada" name="lock-closed" color="medium">
-      </ion-icon>
-    </ion-item>
-  </ion-list>
-
-  <div class="calendar-section">
-    <h3>Dias de foco em Setembro</h3>
-    <!-- Aqui viria o calendário -->
+    <!-- Bottom nav -->
+    <app-bottom-nav [active]="'progress'"></app-bottom-nav>
   </div>
 </ion-content>

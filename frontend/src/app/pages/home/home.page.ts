@@ -6,13 +6,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
 import { LogoComponent } from '../../components/logo/logo.component';
+import { BottomNavComponent } from '../../components/bottom-nav/bottom-nav.component';
 
 @Component({
   selector: 'app-home',
   templateUrl: './home.page.html',
   styleUrls: ['./home.page.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, IonicModule, LogoComponent]
+  imports: [CommonModule, FormsModule, IonicModule, LogoComponent, BottomNavComponent]
 })
 export class HomePage implements OnInit {
   user: any = {};
@@ -55,6 +56,10 @@ export class HomePage implements OnInit {
 
   viewSettings() {
     this.router.navigate(['/settings']);
+  }
+
+  viewInfo() {
+    this.router.navigate(['/info']);
   }
 
   logout() {

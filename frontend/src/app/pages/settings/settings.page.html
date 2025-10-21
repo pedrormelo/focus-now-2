@@ -1,68 +1,64 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-buttons slot="start">
-      <ion-back-button></ion-back-button>
-    </ion-buttons>
-    <ion-title>Configurações</ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content [fullscreen]="true" class="bg-background text-text-primary">
+  <div class="mx-auto w-full max-w-3xl px-5 py-6">
+    <!-- Header with Logo -->
+    <div class="mb-6 flex items-center justify-between">
+      <app-logo height="28"></app-logo>
+      <button class="inline-flex h-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle px-4 text-sm font-medium text-text-primary" (click)="logout()">
+        Sair
+      </button>
+    </div>
 
-<ion-content class="ion-padding">
-  <ion-list>
-    <ion-list-header>
-      <ion-label>Timer</ion-label>
-    </ion-list-header>
+    <!-- Timer settings card -->
+    <div class="mb-4 rounded-3xl border border-surface-border bg-surface/90 p-5">
+      <div class="mb-3 flex items-center justify-between">
+        <div class="flex items-center gap-3 text-text-primary">
+          <ion-icon name="time-outline"></ion-icon>
+          <h2 class="text-lg font-semibold">Timer</h2>
+        </div>
+        <button class="rounded-xl border border-surface-border px-3 py-1 text-sm" (click)="openTimerSettings()">Personalizar</button>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex items-center justify-between rounded-2xl border border-surface-border bg-surface-subtle px-4 py-3">
+          <span class="text-sm">Modo Automático</span>
+          <ion-toggle [(ngModel)]="settings.modoAutomatico" (ionChange)="saveSettings()"></ion-toggle>
+        </label>
+      </div>
+    </div>
 
-    <ion-item button (click)="openTimerSettings()">
-      <ion-icon name="time-outline" slot="start"></ion-icon>
-      <ion-label>Configurações do Timer</ion-label>
-      <ion-note slot="end">Personalizar</ion-note>
-    </ion-item>
+    <!-- Appearance card
+    <div class="mb-4 rounded-3xl border border-surface-border bg-surface/90 p-5">
+      <div class="mb-3 flex items-center gap-3 text-text-primary">
+        <ion-icon name="color-palette-outline"></ion-icon>
+        <h2 class="text-lg font-semibold">Aparência</h2>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex items-center justify-between rounded-2xl border border-surface-border bg-surface-subtle px-4 py-3">
+          <span class="text-sm">Tema Escuro</span>
+          <ion-toggle [(ngModel)]="settings.temaEscuro" (ionChange)="toggleTheme()"></ion-toggle>
+        </label>
+      </div>
+    </div> -->
 
-    <ion-item>
-      <ion-icon name="play-circle-outline" slot="start"></ion-icon>
-      <ion-label>Modo Automático</ion-label>
-      <ion-toggle
-        [(ngModel)]="settings.modoAutomatico"
-        (ionChange)="saveSettings()"
-      >
-      </ion-toggle>
-    </ion-item>
+    <!-- Notifications card -->
+    <div class="mb-6 rounded-3xl border border-surface-border bg-surface/90 p-5">
+      <div class="mb-3 flex items-center gap-3 text-text-primary">
+        <ion-icon name="notifications-outline"></ion-icon>
+        <h2 class="text-lg font-semibold">Notificações</h2>
+      </div>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <label class="flex items-center justify-between rounded-2xl border border-surface-border bg-surface-subtle px-4 py-3">
+          <span class="text-sm">Notificações</span>
+          <ion-toggle [(ngModel)]="settings.notificacoes" (ionChange)="saveSettings()"></ion-toggle>
+        </label>
+        <label class="flex items-center justify-between rounded-2xl border border-surface-border bg-surface-subtle px-4 py-3">
+          <span class="text-sm">Mutar</span>
+          <ion-toggle [(ngModel)]="settings.mutar" (ionChange)="saveSettings()"></ion-toggle>
+        </label>
+      </div>
+    </div>
 
-    <ion-list-header>
-      <ion-label>Aparência</ion-label>
-    </ion-list-header>
-
-    <ion-item>
-      <ion-icon name="moon-outline" slot="start"></ion-icon>
-      <ion-label>Tema Escuro</ion-label>
-      <ion-toggle [(ngModel)]="settings.temaEscuro" (ionChange)="toggleTheme()">
-      </ion-toggle>
-    </ion-item>
-
-    <ion-list-header>
-      <ion-label>Notificações</ion-label>
-    </ion-list-header>
-
-    <ion-item>
-      <ion-icon name="notifications-outline" slot="start"></ion-icon>
-      <ion-label>Notificações</ion-label>
-      <ion-toggle
-        [(ngModel)]="settings.notificacoes"
-        (ionChange)="saveSettings()"
-      >
-      </ion-toggle>
-    </ion-item>
-
-    <ion-item>
-      <ion-icon name="volume-mute-outline" slot="start"></ion-icon>
-      <ion-label>Mutuar</ion-label>
-      <ion-toggle [(ngModel)]="settings.mutar" (ionChange)="saveSettings()">
-      </ion-toggle>
-    </ion-item>
-  </ion-list>
-
-  <div class="version-info">
-    <p>FocusNow v1.0.0</p>
+    <div class="rounded-3xl border border-surface-border bg-surface/90 p-5 text-sm text-text-secondary">
+      FocusNow v1.0.0
+    </div>
   </div>
 </ion-content>

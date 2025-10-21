@@ -1,60 +1,85 @@
-<ion-header>
-  <ion-toolbar>
-    <ion-title>FocusNow</ion-title>
-    <ion-buttons slot="end">
-      <ion-button routerLink="/progress">
-        <ion-icon name="stats-chart"></ion-icon>
-      </ion-button>
-      <ion-button routerLink="/settings">
-        <ion-icon name="settings"></ion-icon>
-      </ion-button>
-    </ion-buttons>
-  </ion-toolbar>
-</ion-header>
-
-<ion-content class="ion-padding">
-  <div class="timer-container">
-    <div class="timer-display">
-      <h1>{{ formatTime(currentTime) }}</h1>
-      <p>{{ timerType === 'pomodoro' ? 'Hora de Focar' : 'Hora da Pausa' }}</p>
+<ion-content [fullscreen]="true" class="bg-background text-text-primary">
+  <div class="mx-auto w-full max-w-3xl px-5 py-6">
+    <!-- Header with Logo -->
+    <div class="mb-6 flex items-center justify-between">
+      <app-logo height="28"></app-logo>
+      <div class="flex items-center gap-2">
+        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="goProgress()">
+          <ion-icon name="stats-chart-outline"></ion-icon>
+        </button>
+        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="openSettings()">
+          <ion-icon name="settings-outline"></ion-icon>
+        </button>
+      </div>
     </div>
 
-    <div class="timer-controls">
-      <ion-button
-        *ngIf="!isRunning"
-        expand="block"
-        color="primary"
-        (click)="startTimer()"
-      >
-        START
-      </ion-button>
-
-      <ion-button
-        *ngIf="isRunning"
-        expand="block"
-        color="warning"
-        (click)="pauseTimer()"
-      >
-        PAUSE
-      </ion-button>
-
-      <ion-button expand="block" color="medium" (click)="stopTimer()">
-        STOP
-      </ion-button>
+    <!-- Track label -->
+    <div class="mb-4 flex items-center gap-2 text-text-secondary">
+      <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-surface-border bg-surface-subtle">
+        <ion-icon name="musical-notes-outline"></ion-icon>
+      </span>
+      <span class="text-sm">{{ trackTitle }}</span>
     </div>
 
-    <div class="cycle-selector">
-      <ion-segment [(ngModel)]="timerType" (ionChange)="resetTimer()">
-        <ion-segment-button value="pomodoro">
-          <ion-label>Foco</ion-label>
-        </ion-segment-button>
-        <ion-segment-button value="shortBreak">
-          <ion-label>Pausa Curta</ion-label>
-        </ion-segment-button>
-        <ion-segment-button value="longBreak">
-          <ion-label>Pausa Longa</ion-label>
-        </ion-segment-button>
-      </ion-segment>
+    <h2 class="mb-3 text-center text-2xl font-semibold">
+      {{ titleText }}
+    </h2>
+
+    <!-- Circular timer -->
+    <div class="relative mx-auto my-4 flex h-72 w-72 items-center justify-center">
+      <svg class="absolute" [attr.width]="(radius*2 + stroke*2)" [attr.height]="(radius*2 + stroke*2)" [attr.viewBox]="'0 0 ' + (radius*2 + stroke*2) + ' ' + (radius*2 + stroke*2)">
+        <circle
+          [attr.cx]="radius + stroke"
+          [attr.cy]="radius + stroke"
+          [attr.r]="radius"
+          [attr.stroke-width]="stroke"
+          class="text-surface-subtle"
+          stroke="currentColor"
+          fill="transparent"
+          opacity="0.6"
+        />
+        <circle
+          [attr.cx]="radius + stroke"
+          [attr.cy]="radius + stroke"
+          [attr.r]="radius"
+          [attr.stroke-width]="stroke"
+          class="text-brand-accent"
+          stroke="currentColor"
+          fill="transparent"
+          [attr.stroke-dasharray]="circumference"
+          [attr.stroke-dashoffset]="dashOffset"
+          [attr.transform]="'rotate(-90 ' + (radius + stroke) + ' ' + (radius + stroke) + ')'"
+          stroke-linecap="round"
+        />
+      </svg>
+      <div class="relative z-10 text-center">
+        <div class="text-5xl font-semibold tracking-wide">{{ formatTime(currentTime) }}</div>
+      </div>
     </div>
+
+    <!-- Controls -->
+    <div class="mt-2 flex items-center justify-center gap-3">
+      <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-red-600 text-white" (click)="stopTimer()">
+        <ion-icon name="stop"></ion-icon>
+      </button>
+      <button class="rounded-full bg-surface-subtle px-5 py-2 text-sm font-semibold text-text-primary" (click)="isRunning ? pauseTimer() : startTimer()">
+        {{ isRunning ? 'PAUSE' : 'START' }}
+      </button>
+      <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="openSettings()">
+        <ion-icon name="options-outline"></ion-icon>
+      </button>
+    </div>
+
+    <!-- Cycle dots -->
+    <div class="mt-5 flex items-center justify-center gap-5">
+      <span class="inline-block h-4 w-4 rounded-full bg-white/90"></span>
+      <span class="inline-block h-4 w-4 rounded-full bg-white/30"></span>
+      <span class="inline-block h-4 w-4 rounded-full bg-white/30"></span>
+      <span class="inline-block h-4 w-4 rounded-full bg-white/30"></span>
+    </div>
+    
   </div>
+  <app-bottom-nav [active]="'timer'"></app-bottom-nav>
+
+
 </ion-content>

@@ -1,18 +1,19 @@
 import { Component, OnInit } from '@angular/core';
-import { ModalController } from '@ionic/angular';
+import { ModalController, ToastController } from '@ionic/angular';
 import { TimerService } from '../../services/timer.service';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
+import { LogoComponent } from '../../components/logo/logo.component';
 
 @Component({
     selector: 'app-settings',
     templateUrl: './settings.page.html',
     styleUrls: ['./settings.page.scss'],
     standalone: true,
-    imports: [CommonModule, FormsModule, IonicModule]
+    imports: [CommonModule, FormsModule, IonicModule, LogoComponent]
 })
 export class SettingsPage implements OnInit {
     settings = {
@@ -26,7 +27,8 @@ export class SettingsPage implements OnInit {
         private modalController: ModalController,
         private timerService: TimerService,
         private authService: AuthService,
-        private router: Router
+        private router: Router,
+        private toastController: ToastController
     ) { }
 
     ngOnInit() {
@@ -42,9 +44,9 @@ export class SettingsPage implements OnInit {
         console.log('Timer settings modal not implemented yet');
     }
 
-    saveSettings() {
+    async saveSettings() {
         localStorage.setItem('appSettings', JSON.stringify(this.settings));
-        this.presentToast('Configurações salvas!');
+        await this.presentToast('Configurações salvas!');
     }
 
     toggleTheme() {
@@ -54,8 +56,12 @@ export class SettingsPage implements OnInit {
     }
 
     async presentToast(message: string) {
-        // Implementar toast
-        console.log(message);
+        const toast = await this.toastController.create({
+            message,
+            duration: 2500,
+            color: 'success'
+        });
+        await toast.present();
     }
 
     logout() {

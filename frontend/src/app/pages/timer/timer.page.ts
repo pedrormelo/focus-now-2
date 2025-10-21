@@ -4,21 +4,30 @@ import { Subscription, timer } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
+import { Router } from '@angular/router';
+import { LogoComponent } from '../../components/logo/logo.component';
+import { BottomNavComponent } from '../../components/bottom-nav/bottom-nav.component';
 
 @Component({
   selector: 'app-timer',
   templateUrl: './timer.page.html',
   styleUrls: ['./timer.page.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, IonicModule]
+  imports: [CommonModule, FormsModule, IonicModule, LogoComponent, BottomNavComponent]
 })
 export class TimerPage implements OnInit, OnDestroy {
   currentTime: number = 25 * 60;
-  timerType: string = 'pomodoro';
+  timerType: 'pomodoro' | 'shortBreak' | 'longBreak' = 'pomodoro';
   isRunning: boolean = false;
   private timerSubscription: Subscription | null = null;
+  trackTitle: string = 'Quiet Resource - Evelyn';
 
-  constructor(private timerService: TimerService) { }
+  // Circle drawing
+  readonly radius = 90;
+  readonly stroke = 14;
+  readonly circumference = 2 * Math.PI * this.radius;
+
+  constructor(private timerService: TimerService, private router: Router) { }
 
   ngOnInit() {
     this.resetTimer();
@@ -71,10 +80,12 @@ export class TimerPage implements OnInit, OnDestroy {
   timerComplete() {
     this.pauseTimer();
 
-    // Salvar ciclo completado
+    // Map tipo to backend expected values and save duration in minutes
+    const tipoBackend = this.mapTipoToBackend(this.timerType);
+    const minutos = Math.round(this.totalSeconds / 60);
     this.timerService.saveCiclo({
-      tipo: this.timerType,
-      duracao: this.currentTime,
+      tipo: tipoBackend,
+      duracao: minutos,
       completado: true
     }).subscribe();
 
@@ -97,4 +108,35 @@ export class TimerPage implements OnInit, OnDestroy {
     const remainingSeconds = seconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
+
+  get totalSeconds(): number {
+    const cfg = this.timerService.getTimerConfig();
+    if (this.timerType === 'pomodoro') return cfg.pomodoro * 60;
+    if (this.timerType === 'shortBreak') return cfg.shortBreak * 60;
+    return cfg.longBreak * 60;
+  }
+
+  get progress(): number {
+    const total = this.totalSeconds;
+    const elapsed = Math.max(0, total - this.currentTime);
+    return total > 0 ? elapsed / total : 0;
+  }
+
+  get dashOffset(): number {
+    return this.circumference * (1 - this.progress);
+  }
+
+  get titleText(): string {
+    return this.timerType === 'pomodoro' ? 'Hora de Focar' : 'Hora da Pausa';
+  }
+
+  private mapTipoToBackend(t: 'pomodoro' | 'shortBreak' | 'longBreak'): 'foco' | 'pausa_curta' | 'pausa_longa' {
+    if (t === 'pomodoro') return 'foco';
+    if (t === 'shortBreak') return 'pausa_curta';
+    return 'pausa_longa';
+  }
+
+  goHome() { this.router.navigate(['/home']); }
+  goProgress() { this.router.navigate(['/progress']); }
+  openSettings() { this.router.navigate(['/settings']); }
 }

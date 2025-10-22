@@ -94,7 +94,7 @@
             <div class="flex h-10 items-center justify-center">
               <ng-container *ngIf="cell.date; else empty">
                 <span [ngClass]="cell.focused ? 'rounded-md bg-brand-accent px-2 py-1 text-white' : 'text-text-primary'">
-                  {{ cell.date?.getDate() }}
+                  {{ cell.date.getDate() }}
                 </span>
               </ng-container>
               <ng-template #empty>

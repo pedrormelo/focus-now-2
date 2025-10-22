@@ -3,17 +3,19 @@ import { TimerService } from '../../services/timer.service';
 import { Subscription, timer } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { IonicModule } from '@ionic/angular';
+import { IonicModule, ModalController } from '@ionic/angular';
 import { Router } from '@angular/router';
 import { LogoComponent } from '../../components/logo/logo.component';
 import { BottomNavComponent } from '../../components/bottom-nav/bottom-nav.component';
+import { CycleDotsComponent } from '../../components/cycle-dots/cycle-dots.component';
+import { TimerSettingsModalComponent } from '../../components/timer-settings-modal/timer-settings-modal.component';
 
 @Component({
   selector: 'app-timer',
   templateUrl: './timer.page.html',
   styleUrls: ['./timer.page.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, IonicModule, LogoComponent, BottomNavComponent]
+  imports: [CommonModule, FormsModule, IonicModule, LogoComponent, BottomNavComponent, CycleDotsComponent]
 })
 export class TimerPage implements OnInit, OnDestroy {
   currentTime: number = 25 * 60;
@@ -21,13 +23,14 @@ export class TimerPage implements OnInit, OnDestroy {
   isRunning: boolean = false;
   private timerSubscription: Subscription | null = null;
   trackTitle: string = 'Quiet Resource - Evelyn';
+  completedCycles = 0;
 
   // Circle drawing
   readonly radius = 90;
   readonly stroke = 14;
   readonly circumference = 2 * Math.PI * this.radius;
 
-  constructor(private timerService: TimerService, private router: Router) { }
+  constructor(private timerService: TimerService, private router: Router, private modalCtrl: ModalController) { }
 
   ngOnInit() {
     this.resetTimer();
@@ -89,6 +92,11 @@ export class TimerPage implements OnInit, OnDestroy {
       completado: true
     }).subscribe();
 
+    // Contabiliza ciclo de foco concluído
+    if (this.timerType === 'pomodoro') {
+      this.completedCycles = (this.completedCycles + 1);
+    }
+
     // Próximo ciclo automático
     this.nextCycle();
   }
@@ -139,4 +147,19 @@ export class TimerPage implements OnInit, OnDestroy {
   goHome() { this.router.navigate(['/home']); }
   goProgress() { this.router.navigate(['/progress']); }
   openSettings() { this.router.navigate(['/settings']); }
+
+  async openTimerSettings() {
+    const current = this.timerService.getTimerConfig();
+    const modal = await this.modalCtrl.create({
+      component: TimerSettingsModalComponent,
+      componentProps: { config: current },
+      cssClass: 'timer-settings-modal'
+    });
+    await modal.present();
+    const { data, role } = await modal.onDidDismiss();
+    if (data) {
+      this.timerService.updateTimerConfig(data);
+      this.resetTimer();
+    }
+  }
 }

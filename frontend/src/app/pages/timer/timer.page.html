@@ -28,6 +28,12 @@
     <!-- Circular timer -->
     <div class="relative mx-auto my-4 flex h-72 w-72 items-center justify-center">
       <svg class="absolute" [attr.width]="(radius*2 + stroke*2)" [attr.height]="(radius*2 + stroke*2)" [attr.viewBox]="'0 0 ' + (radius*2 + stroke*2) + ' ' + (radius*2 + stroke*2)">
+        <defs>
+          <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#FDB000" />
+            <stop offset="100%" stop-color="#FE5D00" />
+          </linearGradient>
+        </defs>
         <circle
           [attr.cx]="radius + stroke"
           [attr.cy]="radius + stroke"
@@ -43,8 +49,7 @@
           [attr.cy]="radius + stroke"
           [attr.r]="radius"
           [attr.stroke-width]="stroke"
-          class="text-brand-accent"
-          stroke="currentColor"
+          [attr.stroke]="'url(#brandGradient)'"
           fill="transparent"
           [attr.stroke-dasharray]="circumference"
           [attr.stroke-dashoffset]="dashOffset"
@@ -58,25 +63,20 @@
     </div>
 
     <!-- Controls -->
-    <div class="mt-2 flex items-center justify-center gap-3">
+    <div class="mt-2 pb-10 flex items-center justify-center gap-3">
       <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-red-600 text-white" (click)="stopTimer()">
         <ion-icon name="stop"></ion-icon>
       </button>
       <button class="rounded-full bg-surface-subtle px-5 py-2 text-sm font-semibold text-text-primary" (click)="isRunning ? pauseTimer() : startTimer()">
         {{ isRunning ? 'PAUSE' : 'START' }}
       </button>
-      <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="openSettings()">
+      <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="openTimerSettings()">
         <ion-icon name="options-outline"></ion-icon>
       </button>
     </div>
 
     <!-- Cycle dots -->
-    <div class="mt-5 flex items-center justify-center gap-5">
-      <span class="inline-block h-4 w-4 rounded-full bg-white/90"></span>
-      <span class="inline-block h-4 w-4 rounded-full bg-white/30"></span>
-      <span class="inline-block h-4 w-4 rounded-full bg-white/30"></span>
-      <span class="inline-block h-4 w-4 rounded-full bg-white/30"></span>
-    </div>
+    <app-cycle-dots class="pt-5" [total]="4" [completed]="completedCycles"></app-cycle-dots>
     
   </div>
   <app-bottom-nav [active]="'timer'"></app-bottom-nav>

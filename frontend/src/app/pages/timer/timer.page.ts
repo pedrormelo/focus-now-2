@@ -1,6 +1,5 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { TimerService } from '../../services/timer.service';
-import { Subscription, timer } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule, ModalController } from '@ionic/angular';
@@ -17,13 +16,11 @@ import { TimerSettingsModalComponent } from '../../components/timer-settings-mod
   standalone: true,
   imports: [CommonModule, FormsModule, IonicModule, LogoComponent, BottomNavComponent, CycleDotsComponent]
 })
-export class TimerPage implements OnInit, OnDestroy {
-  currentTime: number = 25 * 60;
-  timerType: 'pomodoro' | 'shortBreak' | 'longBreak' = 'pomodoro';
-  isRunning: boolean = false;
-  private timerSubscription: Subscription | null = null;
+export class TimerPage implements OnInit {
   trackTitle: string = 'Quiet Resource - Evelyn';
-  completedCycles = 0;
+  get completedCycles() { return this.timerService.completedCycles; }
+  // Auto mode and long-break tracking
+  autoMode = true;
 
   // Circle drawing
   readonly radius = 90;
@@ -33,83 +30,18 @@ export class TimerPage implements OnInit, OnDestroy {
   constructor(private timerService: TimerService, private router: Router, private modalCtrl: ModalController) { }
 
   ngOnInit() {
-    this.resetTimer();
+    this.loadSettings();
+    this.timerService.loadAppSettings();
   }
 
-  ngOnDestroy() {
-    this.stopTimer();
-  }
 
-  startTimer() {
-    if (!this.isRunning) {
-      this.isRunning = true;
-      this.timerSubscription = timer(0, 1000).subscribe(() => {
-        if (this.currentTime > 0) {
-          this.currentTime--;
-        } else {
-          this.timerComplete();
-        }
-      });
-    }
-  }
+  startTimer() { this.timerService.start(); }
 
-  pauseTimer() {
-    this.isRunning = false;
-    if (this.timerSubscription) {
-      this.timerSubscription.unsubscribe();
-    }
-  }
+  pauseTimer() { this.timerService.pause(); }
 
-  stopTimer() {
-    this.pauseTimer();
-    this.resetTimer();
-  }
+  stopTimer() { this.timerService.stop(); }
 
-  resetTimer() {
-    const config = this.timerService.getTimerConfig();
-    switch (this.timerType) {
-      case 'pomodoro':
-        this.currentTime = config.pomodoro * 60;
-        break;
-      case 'shortBreak':
-        this.currentTime = config.shortBreak * 60;
-        break;
-      case 'longBreak':
-        this.currentTime = config.longBreak * 60;
-        break;
-    }
-  }
-
-  timerComplete() {
-    this.pauseTimer();
-
-    // Map tipo to backend expected values and save duration in minutes
-    const tipoBackend = this.mapTipoToBackend(this.timerType);
-    const minutos = Math.round(this.totalSeconds / 60);
-    this.timerService.saveCiclo({
-      tipo: tipoBackend,
-      duracao: minutos,
-      completado: true
-    }).subscribe();
-
-    // Contabiliza ciclo de foco concluído
-    if (this.timerType === 'pomodoro') {
-      this.completedCycles = (this.completedCycles + 1);
-    }
-
-    // Próximo ciclo automático
-    this.nextCycle();
-  }
-
-  nextCycle() {
-    if (this.timerType === 'pomodoro') {
-      // Alternar entre pausas
-      this.timerType = 'shortBreak'; // Simplificado
-    } else {
-      this.timerType = 'pomodoro';
-    }
-    this.resetTimer();
-  }
+  // Next cycle logic is handled by the service
 
   formatTime(seconds: number): string {
     const minutes = Math.floor(seconds / 60);
@@ -117,16 +49,11 @@ export class TimerPage implements OnInit, OnDestroy {
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 
-  get totalSeconds(): number {
-    const cfg = this.timerService.getTimerConfig();
-    if (this.timerType === 'pomodoro') return cfg.pomodoro * 60;
-    if (this.timerType === 'shortBreak') return cfg.shortBreak * 60;
-    return cfg.longBreak * 60;
-  }
+  get totalSeconds(): number { return this.timerService.totalSeconds; }
 
   get progress(): number {
     const total = this.totalSeconds;
-    const elapsed = Math.max(0, total - this.currentTime);
+    const elapsed = Math.max(0, total - this.timerService.currentTime);
     return total > 0 ? elapsed / total : 0;
   }
 
@@ -135,14 +62,18 @@ export class TimerPage implements OnInit, OnDestroy {
   }
 
   get titleText(): string {
-    return this.timerType === 'pomodoro' ? 'Hora de Focar' : 'Hora da Pausa';
+    return this.timerService.timerType === 'pomodoro' ? 'Hora de Focar' : 'Hora da Pausa';
   }
 
-  private mapTipoToBackend(t: 'pomodoro' | 'shortBreak' | 'longBreak'): 'foco' | 'pausa_curta' | 'pausa_longa' {
-    if (t === 'pomodoro') return 'foco';
-    if (t === 'shortBreak') return 'pausa_curta';
-    return 'pausa_longa';
+  get gradientId(): 'gradPomodoro' | 'gradShort' | 'gradLong' {
+    const t = this.timerService.timerType;
+    if (t === 'shortBreak') return 'gradShort';
+    if (t === 'longBreak') return 'gradLong';
+    return 'gradPomodoro';
   }
+
+  get currentTime(): number { return this.timerService.currentTime; }
+  get isRunning(): boolean { return this.timerService.isRunning; }
 
   goHome() { this.router.navigate(['/home']); }
   goProgress() { this.router.navigate(['/progress']); }
@@ -159,7 +90,17 @@ export class TimerPage implements OnInit, OnDestroy {
     const { data, role } = await modal.onDidDismiss();
     if (data) {
       this.timerService.updateTimerConfig(data);
-      this.resetTimer();
+      this.timerService.setType(this.timerService.timerType);
     }
+  }
+
+  private loadSettings() {
+    try {
+      const s = localStorage.getItem('appSettings');
+      if (s) {
+        const parsed = JSON.parse(s);
+        if (typeof parsed.modoAutomatico === 'boolean') this.autoMode = parsed.modoAutomatico;
+      }
+    } catch { /* ignore */ }
   }
 }

@@ -16,24 +16,12 @@ import { BottomNavComponent } from '../../components/bottom-nav/bottom-nav.compo
 })
 export class ProgressPage implements OnInit {
   estatisticas: any = {};
-  conquistas = [
-    { nome: 'Tudo Se Inicia', descricao: 'Finalizar primeiro ciclo', alcançada: true },
-    { nome: 'Pegando Jeito', descricao: 'Finalizar 4 ciclos', alcançada: true },
-    { nome: 'Achando o Ritmo', descricao: 'Encontre a primeira música', alcançada: false },
-    { nome: 'Dançando', descricao: 'Encontre quatro músicas', alcançada: false },
-    { nome: 'Seguindo o Foco', descricao: 'Tenha uma sequência de 4 dias', alcançada: true },
-    { nome: 'Acontece...', descricao: 'Perca uma sequência', alcançada: false }
-  ];
-
-  musicas = [
-    { nome: 'Sons da Floresta', artista: 'Vários Artistas', encontrada: true },
-    { nome: 'Sons de Chuva', artista: 'Vários Artistas', encontrada: true },
-    { nome: 'Quiet Resource', artista: 'Evelyn Stein', encontrada: true },
-    { nome: 'Saudade', artista: 'Gabriel Albuquerque', encontrada: false },
-    { nome: 'Mix de Frases #1', artista: 'Vários Artistas', encontrada: false },
-    { nome: 'Mix de Frases #2', artista: 'Vários Artistas', encontrada: false },
-    { nome: 'Mix de Frases #3', artista: 'Vários Artistas', encontrada: false }
-  ];
+  currentStreak = 0;
+  bestStreak = 0;
+  conquistas: Array<{ nome: string; descricao: string; alcançada: boolean }> = [];
+  // MVP: treat alarm sound selection as discovery progress
+  alarmSounds = ['Alarme Padrão', 'Sino', 'Digital', 'Natureza'];
+  musicFound = 0;
 
   // Calendar state
   monthDate = new Date();
@@ -48,7 +36,8 @@ export class ProgressPage implements OnInit {
 
   ngOnInit() {
     this.loadEstatisticas();
-    this.loadHistorico();
+    this.loadStreak();
+    this.loadDiasFoco();
     this.buildCalendar();
   }
 
@@ -56,9 +45,26 @@ export class ProgressPage implements OnInit {
     this.timerService.getEstatisticas().subscribe({
       next: (stats: any) => {
         this.estatisticas = stats;
+        this.updateComputed();
       },
       error: (error) => {
         console.error('Erro ao carregar estatísticas:', error);
+      }
+    });
+  }
+
+  loadStreak() {
+    this.timerService.getStreak().subscribe({
+      next: (s: any) => {
+        this.currentStreak = s?.currentStreak || 0;
+        this.bestStreak = s?.bestStreak || 0;
+        this.updateComputed();
+      },
+      error: (err) => {
+        console.error('Erro ao carregar streak:', err);
+        this.currentStreak = 0;
+        this.bestStreak = 0;
+        this.updateComputed();
       }
     });
   }
@@ -73,7 +79,7 @@ export class ProgressPage implements OnInit {
   }
 
   getMusicasEncontradas() {
-    return this.musicas.filter(m => m.encontrada).length;
+    return this.musicFound;
   }
 
   // --- Calendar and metrics helpers ---
@@ -118,32 +124,79 @@ export class ProgressPage implements OnInit {
     return `${y}-${m}-${day}`;
   }
 
-  private loadHistorico() {
-    this.timerService.getHistorico().subscribe((items: any) => {
-        const arr = Array.isArray(items) ? items : [];
-        // Consider only completed focus cycles
-        const perDayMinutes = new Map<string, number>();
-        arr.forEach((it: any) => {
-          if (it.tipo === 'foco' && it.completado) {
-            const dt = new Date(it.data_criacao);
-            const key = this.dateKey(dt);
-            this.focusDateSet.add(key);
-            const prev = perDayMinutes.get(key) || 0;
-            perDayMinutes.set(key, prev + (it.duracao || 0));
-          }
-        });
+  private loadDiasFoco() {
+    const first = new Date(this.monthDate.getFullYear(), this.monthDate.getMonth(), 1);
+    const last = new Date(this.monthDate.getFullYear(), this.monthDate.getMonth() + 1, 0);
+    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const start = fmt(first), end = fmt(last);
 
-        // Average hours/day over the focused days (fallback to 0)
-        const days = perDayMinutes.size || 1;
-        const totalMin = Array.from(perDayMinutes.values()).reduce((a, b) => a + b, 0);
-        this.avgFocusHoursPerDay = Math.round((totalMin / days) / 60 * 10) / 10;
-
-        this.buildCalendar();
-      }, (/* error */) => {
-        // Keep calendar without focus highlights if API fails
-        this.buildCalendar();
+    this.timerService.getDiasFoco(start, end).subscribe((res: any) => {
+      const days = Array.isArray(res?.days) ? res.days : [];
+      const newSet = new Set<string>();
+      let totalMin = 0;
+      let dayCount = 0;
+      for (const d of days) {
+        const dia = d.dia || d.DIA || d.date;
+        const minutos = Number(d.minutos_foco || 0);
+        if (dia && minutos > 0) {
+          newSet.add(String(dia));
+          totalMin += minutos;
+          dayCount += 1;
+        }
       }
-    );
+      const avg = dayCount > 0 ? (totalMin / dayCount) : 0;
+      this.avgFocusHoursPerDay = Math.round((avg / 60) * 10) / 10;
+      this.focusDateSet = newSet;
+      this.buildCalendar();
+    }, () => {
+      // Fallback to historico if daily aggregates fail
+      this.loadHistoricoFallbackForMonth(first, last);
+    });
+  }
+
+  // Month navigation for the calendar
+  prevMonth() {
+    this.monthDate = new Date(this.monthDate.getFullYear(), this.monthDate.getMonth() - 1, 1);
+    this.loadDiasFoco();
+    this.buildCalendar();
+  }
+  nextMonth() {
+    this.monthDate = new Date(this.monthDate.getFullYear(), this.monthDate.getMonth() + 1, 1);
+    this.loadDiasFoco();
+    this.buildCalendar();
+  }
+
+  // Fallback: use historico (last 50) to mark focus days in current month
+  private loadHistoricoFallbackForMonth(first: Date, last: Date) {
+    const startKey = this.dateKey(first);
+    const endKey = this.dateKey(last);
+    const inRange = (d: Date) => {
+      const k = this.dateKey(d);
+      return k >= startKey && k <= endKey;
+    };
+    this.timerService.getHistorico().subscribe((items: any) => {
+      const arr = Array.isArray(items) ? items : [];
+      const newSet = new Set<string>();
+      const perDayMinutes = new Map<string, number>();
+      arr.forEach((it: any) => {
+        if (it.tipo === 'foco' && it.completado) {
+          const dt = new Date(it.data_criacao);
+          if (!inRange(dt)) return;
+          const key = this.dateKey(dt);
+          newSet.add(key);
+          const prev = perDayMinutes.get(key) || 0;
+          perDayMinutes.set(key, prev + (it.duracao || 0));
+        }
+      });
+      const days = perDayMinutes.size || 1;
+      const totalMin = Array.from(perDayMinutes.values()).reduce((a, b) => a + b, 0);
+      this.avgFocusHoursPerDay = Math.round((totalMin / days) / 60 * 10) / 10;
+      this.focusDateSet = newSet;
+      this.buildCalendar();
+    }, () => {
+      // keep calendar without highlights
+      this.buildCalendar();
+    });
   }
 
   get achievementsPercent(): number {
@@ -152,7 +205,7 @@ export class ProgressPage implements OnInit {
   }
 
   get musicPercent(): number {
-    const total = this.musicas.length || 1;
+    const total = this.alarmSounds.length || 1;
     return Math.round((this.getMusicasEncontradas() / total) * 100);
   }
 
@@ -164,5 +217,21 @@ export class ProgressPage implements OnInit {
     // Map focus hours to a 0-100% bar, clamped with a reasonable daily cap (12h)
     const pct = Math.round((this.focusHours / 12) * 100);
     return Math.max(0, Math.min(100, pct));
+  }
+
+  private updateComputed() {
+    const stats = this.estatisticas || {};
+    const completed = Number(stats.ciclos_completados || 0);
+    const cfg = this.timerService.getTimerConfig();
+    this.musicFound = cfg.alarmSound && cfg.alarmSound !== 'Alarme Padrão' ? 1 : 0;
+
+    this.conquistas = [
+      { nome: 'Tudo Se Inicia', descricao: 'Finalizar primeiro ciclo', alcançada: completed >= 1 },
+      { nome: 'Pegando Jeito', descricao: 'Finalizar 4 ciclos', alcançada: completed >= 4 },
+      { nome: 'Seguindo o Foco', descricao: 'Tenha uma sequência de 4 dias', alcançada: this.currentStreak >= 4 },
+      { nome: 'Achando o Ritmo', descricao: 'Escolha um som de alarme', alcançada: this.musicFound >= 1 },
+      { nome: 'Dançando', descricao: 'Explore 4 sons diferentes', alcançada: false },
+      { nome: 'Acontece...', descricao: 'Perca uma sequência', alcançada: this.currentStreak === 0 && completed > 0 }
+    ];
   }
 }

@@ -29,9 +29,20 @@
     <div class="relative mx-auto my-4 flex h-72 w-72 items-center justify-center">
       <svg class="absolute" [attr.width]="(radius*2 + stroke*2)" [attr.height]="(radius*2 + stroke*2)" [attr.viewBox]="'0 0 ' + (radius*2 + stroke*2) + ' ' + (radius*2 + stroke*2)">
         <defs>
-          <linearGradient id="brandGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+          <!-- Pomodoro: warm gradient -->
+          <linearGradient id="gradPomodoro" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stop-color="#FDB000" />
             <stop offset="100%" stop-color="#FE5D00" />
+          </linearGradient>
+          <!-- Short break: blue gradient -->
+          <linearGradient id="gradShort" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#0066FF" />
+            <stop offset="100%" stop-color="#00C2FF" />
+          </linearGradient>
+          <!-- Long break: purple gradient -->
+          <linearGradient id="gradLong" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#B14EFF" />
+            <stop offset="100%" stop-color="#FF4EDB" />
           </linearGradient>
         </defs>
         <circle
@@ -49,7 +60,7 @@
           [attr.cy]="radius + stroke"
           [attr.r]="radius"
           [attr.stroke-width]="stroke"
-          [attr.stroke]="'url(#brandGradient)'"
+          [attr.stroke]="'url(#' + gradientId + ')'"
           fill="transparent"
           [attr.stroke-dasharray]="circumference"
           [attr.stroke-dashoffset]="dashOffset"

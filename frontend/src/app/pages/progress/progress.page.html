@@ -26,7 +26,7 @@
           </div>
           <div class="flex-1">
             <div class="text-xl font-semibold">Conquistas</div>
-            <div class="text-text-secondary">{{ getConquistasAlcancadas() }} Alcançadas</div>
+            <div class="text-text-secondary">{{ getConquistasAlcancadas() }} de {{ conquistas.length }} Alcançadas</div>
             <div class="mt-2 h-3 rounded-full bg-surface-subtle">
               <div class="h-3 rounded-full bg-gradient-to-r from-brand-gradientStart to-brand-gradientEnd" [style.width.%]="achievementsPercent"></div>
             </div>
@@ -42,7 +42,7 @@
           </div>
           <div class="flex-1">
             <div class="text-xl font-semibold">Músicas e Sons</div>
-            <div class="text-text-secondary">{{ getMusicasEncontradas() }} Encontradas</div>
+            <div class="text-text-secondary">{{ getMusicasEncontradas() }} de {{ alarmSounds.length }} Encontradas</div>
             <div class="mt-2 h-3 rounded-full bg-surface-subtle">
               <div class="h-3 rounded-full bg-gradient-to-r from-brand-gradientStart to-brand-gradientEnd" [style.width.%]="musicPercent"></div>
             </div>
@@ -72,15 +72,24 @@
       <div class="flex items-center gap-3">
         <ion-icon name="flame-outline" class="text-brand-accent text-2xl"></ion-icon>
         <div>
-          <div class="text-xl"><span class="mr-2 text-2xl font-semibold">{{ estatisticas.dias_sequencia || 0 }}</span>dias!</div>
+          <div class="text-xl"><span class="mr-2 text-2xl font-semibold">{{ currentStreak || 0 }}</span>dias!</div>
           <p class="-mt-1 text-sm text-text-secondary">Sequência de <span class="font-extrabold">FOCO</span></p>
+          <div class="mt-1 text-xs text-text-secondary">Recorde: <span class="font-semibold">{{ bestStreak || 0 }}</span> dias</div>
         </div>
       </div>
     </div>
 
-    <!-- Month label pill -->
-    <div class="mx-auto w-max rounded-full bg-surface-subtle px-4 py-1 text-sm">
-      <span class="text-text-secondary">Dias de </span><span class="font-semibold">foco</span> em {{ monthLabel }}
+    <!-- Month label with navigation -->
+    <div class="mx-auto flex w-max items-center gap-2 rounded-full bg-surface-subtle px-3 py-1 text-sm">
+      <button class="inline-flex h-7 w-7 items-center justify-center rounded-full text-text-secondary hover:text-text-primary" (click)="prevMonth()" aria-label="Mês anterior">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </button>
+      <div>
+        <span class="text-text-secondary">Dias de </span><span class="font-semibold">foco</span> em {{ monthLabel }}
+      </div>
+      <button class="inline-flex h-7 w-7 items-center justify-center rounded-full text-text-secondary hover:text-text-primary" (click)="nextMonth()" aria-label="Próximo mês">
+        <ion-icon name="chevron-forward-outline"></ion-icon>
+      </button>
     </div>
 
     <!-- Calendar -->

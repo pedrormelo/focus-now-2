@@ -66,6 +66,22 @@ async function connectDB() {
     }
 }
 
+// Middleware para garantir conexão com o DB
+async function ensureDBConnected(req, res, next) {
+    if (!db) {
+        console.warn('DB connection missing. Attempting to reconnect...');
+        try {
+            await connectDB();
+        } catch (e) {
+            console.error('Failed to reconnect DB:', e);
+        }
+    }
+    if (!db) {
+        return res.status(503).json({ error: 'Serviço indisponível: banco de dados não conectado' });
+    }
+    next();
+}
+
 // Função para criar tabelas automaticamente
 async function createTables() {
     try {
@@ -111,7 +127,15 @@ async function createTables() {
             )
         `);
 
-        console.log('✅ Todas as tabelas criadas/verificadas com sucesso');
+        // Indexes to speed up calendar/day queries
+        try {
+            await db.execute(`CREATE INDEX idx_ciclos_user_date ON ciclos_pomodoro (usuario_id, data_criacao)`);
+        } catch (e) { /* ignore if exists */ }
+        try {
+            await db.execute(`CREATE INDEX idx_ciclos_user_tipo_date ON ciclos_pomodoro (usuario_id, tipo, data_criacao)`);
+        } catch (e) { /* ignore if exists */ }
+
+        console.log('✅ Todas as tabelas e índices criados/verificados com sucesso');
         
     } catch (error) {
         console.error('Erro ao criar tabelas:', error);
@@ -190,10 +214,16 @@ app.post('/api/login', async (req, res) => {
 });
 
 // Rotas do Timer e Progresso
-app.post('/api/ciclos', authenticateToken, async (req, res) => {
+app.post('/api/ciclos', ensureDBConnected, authenticateToken, async (req, res) => {
     try {
         const { tipo, duracao, completado } = req.body;
         const userId = req.user.userId;
+
+        // Verificar se usuario existe (evita erro de FK)
+        const [exists] = await db.execute('SELECT id FROM usuarios WHERE id = ? LIMIT 1', [userId]);
+        if (!exists || exists.length === 0) {
+            return res.status(400).json({ error: 'Usuário não encontrado' });
+        }
 
         const [result] = await db.execute(
             'INSERT INTO ciclos_pomodoro (usuario_id, tipo, duracao, completado) VALUES (?, ?, ?, ?)',
@@ -219,11 +249,13 @@ app.post('/api/ciclos', authenticateToken, async (req, res) => {
 
         res.json({ message: 'Ciclo salvo com sucesso', cicloId: result.insertId });
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao salvar ciclo' });
+        console.error('Erro ao salvar ciclo:', error);
+        const message = error && error.message ? error.message : 'Erro ao salvar ciclo';
+        res.status(500).json({ error: message });
     }
 });
 
-app.get('/api/historico', authenticateToken, async (req, res) => {
+app.get('/api/historico', ensureDBConnected, authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
         const [ciclos] = await db.execute(
@@ -232,11 +264,12 @@ app.get('/api/historico', authenticateToken, async (req, res) => {
         );
         res.json(ciclos);
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar histórico' });
+        console.error('Erro ao buscar histórico:', error);
+        res.status(500).json({ error: error?.message || 'Erro ao buscar histórico' });
     }
 });
 
-app.get('/api/estatisticas', authenticateToken, async (req, res) => {
+app.get('/api/estatisticas', ensureDBConnected, authenticateToken, async (req, res) => {
     try {
         const userId = req.user.userId;
 
@@ -267,7 +300,8 @@ app.get('/api/estatisticas', authenticateToken, async (req, res) => {
             ...sequencia[0]
         });
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+        console.error('Erro ao buscar estatísticas:', error);
+        res.status(500).json({ error: error?.message || 'Erro ao buscar estatísticas' });
     }
 });
 
@@ -328,4 +362,124 @@ connectDB().then(() => {
     app.listen(PORT, () => {
         console.log(`Servidor rodando na porta ${PORT}`);
     });
+});
+
+// Dias de foco (agregados por dia, para calendários)
+app.get('/api/dias-foco', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        // Parse date range from query or default to current month
+        const { start, end } = req.query;
+
+        function toISODate(d) {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        let startDate, endDate;
+        if (start && end) {
+            startDate = new Date(start);
+            endDate = new Date(end);
+        } else {
+            const now = new Date();
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        }
+
+        const startStr = toISODate(startDate);
+        const endStr = toISODate(endDate);
+
+        const [rows] = await db.execute(`
+            SELECT 
+                DATE(data_criacao) as dia,
+                SUM(CASE WHEN tipo = 'foco' AND completado = 1 THEN duracao ELSE 0 END) as minutos_foco,
+                SUM(CASE WHEN tipo = 'foco' AND completado = 1 THEN 1 ELSE 0 END) as ciclos_foco,
+                SUM(CASE WHEN completado = 1 THEN 1 ELSE 0 END) as ciclos_completados,
+                SUM(CASE WHEN tipo = 'pausa_curta' AND completado = 1 THEN 1 ELSE 0 END) as pausas_curtas,
+                SUM(CASE WHEN tipo = 'pausa_longa' AND completado = 1 THEN 1 ELSE 0 END) as pausas_longas
+            FROM ciclos_pomodoro
+            WHERE usuario_id = ?
+              AND DATE(data_criacao) BETWEEN ? AND ?
+            GROUP BY DATE(data_criacao)
+            ORDER BY dia ASC
+        `, [userId, startStr, endStr]);
+
+        res.json({ range: { start: startStr, end: endStr }, days: rows });
+    } catch (error) {
+        console.error('Erro ao buscar dias de foco:', error);
+        res.status(500).json({ error: error?.message || 'Erro ao buscar dias de foco' });
+    }
+});
+
+// True streak (consecutive days with at least one completed focus cycle)
+app.get('/api/streak', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        // Fetch focus cycles (completed) for a reasonable window (e.g., last 400 days)
+        const [rows] = await db.execute(`
+            SELECT data_criacao
+            FROM ciclos_pomodoro
+            WHERE usuario_id = ? AND tipo = 'foco' AND completado = 1
+            AND data_criacao >= DATE_SUB(CURRENT_DATE, INTERVAL 400 DAY)
+            ORDER BY data_criacao DESC
+        `, [userId]);
+
+        // Build a set of distinct days (YYYY-MM-DD)
+        const dayKey = (d) => {
+            const date = new Date(d);
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
+        const daySet = new Set(rows.map(r => dayKey(r.data_criacao)));
+        const days = Array.from(daySet).sort(); // ascending
+
+        // Compute current streak: consecutive days up to today
+        const today = new Date();
+        const keyFor = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        };
+        let currentStreak = 0;
+        // Must have focus today to have a non-zero streak
+        const todayKey = keyFor(today);
+        if (daySet.has(todayKey)) {
+            currentStreak = 1;
+            const d = new Date(today);
+            while (true) {
+                d.setDate(d.getDate() - 1);
+                const k = keyFor(d);
+                if (daySet.has(k)) currentStreak++;
+                else break;
+            }
+        }
+
+        // Compute best streak historically
+        let bestStreak = 0;
+        let run = 0;
+        let prev = null;
+        for (const k of days) {
+            const [y, m, d] = k.split('-').map(Number);
+            const curDate = new Date(Date.UTC(y, m - 1, d));
+            if (prev) {
+                const diffDays = Math.round((curDate - prev) / (1000 * 60 * 60 * 24));
+                if (diffDays === 1) run += 1; else run = 1;
+            } else {
+                run = 1;
+            }
+            if (run > bestStreak) bestStreak = run;
+            prev = curDate;
+        }
+
+        const lastFocusDate = days.length ? days[days.length - 1] : null;
+        res.json({ currentStreak, bestStreak, lastFocusDate });
+    } catch (error) {
+        console.error('Erro ao calcular streak:', error);
+        res.status(500).json({ error: error?.message || 'Erro ao calcular streak' });
+    }
 });

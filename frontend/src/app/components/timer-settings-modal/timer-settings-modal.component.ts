@@ -123,7 +123,7 @@ export class TimerSettingsModalComponent {
 
     // Limits for each numeric field
     limits = {
-      pomodoro: { min: 5, max: 120 },
+      pomodoro: { min: 1, max: 120 },
       shortBreak: { min: 1, max: 30 },
       longBreak: { min: 5, max: 60 },
       longBreakInterval: { min: 2, max: 12 }

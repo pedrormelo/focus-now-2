@@ -102,3 +102,15 @@ ion-modal.timer-settings-modal {
 ion-modal.timer-settings-modal::part(content) {
 	background: transparent;
 }
+
+/* Celebration modal: translucent backdrop and invisible chrome */
+ion-modal.celebration-modal {
+	--backdrop-opacity: 0.75;
+	--background: transparent;
+	--box-shadow: none;
+	--height: auto;
+	--width: 92vw;
+	--max-width: 520px;
+}
+ion-modal.celebration-modal::part(content) { background: transparent; display:flex; align-items:center; justify-content:center; padding: 16px; }
+ion-modal.celebration-modal::part(backdrop) { backdrop-filter: blur(3px); }

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ToastController, LoadingController } from '@ionic/angular';
@@ -14,20 +14,16 @@ import { LogoComponent } from '../../components/logo/logo.component';
     standalone: true,
     imports: [CommonModule, FormsModule, IonicModule, LogoComponent]
 })
-export class LoginPage implements OnInit {
+export class LoginPage {
     credentials = {
         email: '',
         senha: ''
     };
 
-    constructor(
-        private authService: AuthService,
-        private router: Router,
-        private toastController: ToastController,
-        private loadingController: LoadingController
-    ) { }
-
-    ngOnInit() { }
+    private authService = inject(AuthService);
+    private router = inject(Router);
+    private toastController = inject(ToastController);
+    private loadingController = inject(LoadingController);
 
     async login() {
         const loading = await this.loadingController.create({

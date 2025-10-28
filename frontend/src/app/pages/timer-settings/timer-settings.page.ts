@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnInit, inject } from '@angular/core';
 import { ModalController } from '@ionic/angular';
 
 @Component({
@@ -6,7 +6,7 @@ import { ModalController } from '@ionic/angular';
     templateUrl: './timer-settings.page.html',
     styleUrls: ['./timer-settings.page.scss'],
 })
-export class TimerSettingsPage {
+export class TimerSettingsPage implements OnInit {
     @Input() config: any;
 
     timerConfig: {
@@ -37,7 +37,9 @@ export class TimerSettingsPage {
         'Natureza'
     ];
 
-    constructor(private modalController: ModalController) {
+    private modalController = inject(ModalController);
+
+    ngOnInit(): void {
         if (this.config) {
             this.timerConfig = { ...this.timerConfig, ...this.config };
         }

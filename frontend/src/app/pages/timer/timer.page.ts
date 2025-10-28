@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { TimerService } from '../../services/timer.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -27,7 +27,9 @@ export class TimerPage implements OnInit {
   readonly stroke = 14;
   readonly circumference = 2 * Math.PI * this.radius;
 
-  constructor(private timerService: TimerService, private router: Router, private modalCtrl: ModalController) { }
+  private timerService = inject(TimerService);
+  private router = inject(Router);
+  private modalCtrl = inject(ModalController);
 
   ngOnInit() {
     this.loadSettings();
@@ -74,10 +76,13 @@ export class TimerPage implements OnInit {
 
   get currentTime(): number { return this.timerService.currentTime; }
   get isRunning(): boolean { return this.timerService.isRunning; }
+  get isMuted(): boolean { return this.timerService.isMuted; }
 
   goHome() { this.router.navigate(['/home']); }
   goProgress() { this.router.navigate(['/progress']); }
   openSettings() { this.router.navigate(['/settings']); }
+  openSounds() { this.router.navigate(['/sounds']); }
+  toggleMute() { this.timerService.setMuted(!this.isMuted); }
 
   async openTimerSettings() {
     const current = this.timerService.getTimerConfig();

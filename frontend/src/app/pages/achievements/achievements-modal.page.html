@@ -9,9 +9,9 @@
 
 <ion-content class="ion-padding">
     <ion-list>
-        <ion-item *ngFor="let conquista of conquistas" [class]="conquista.alcançada ? 'alcançada' : ''">
-            <ion-icon [name]="conquista.alcançada ? 'trophy' : 'trophy-outline'"
-                [color]="conquista.alcançada ? 'warning' : 'medium'" slot="start">
+        <ion-item *ngFor="let conquista of conquistas" [class]="conquista['alcançada'] ? 'alcançada' : ''">
+            <ion-icon [name]="conquista['alcançada'] ? 'trophy' : 'trophy-outline'"
+                [color]="conquista['alcançada'] ? 'warning' : 'medium'" slot="start">
             </ion-icon>
             <ion-label>
                 <h3>{{ conquista.nome }}</h3>

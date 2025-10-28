@@ -4,21 +4,32 @@
     <div class="mb-6 flex items-center justify-between">
       <app-logo height="28"></app-logo>
       <div class="flex items-center gap-2">
-        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="goProgress()">
-          <ion-icon name="stats-chart-outline"></ion-icon>
-        </button>
-        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="openSettings()">
+        <button
+          class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary"
+          (click)="openSettings()" aria-label="Configurações">
           <ion-icon name="settings-outline"></ion-icon>
         </button>
       </div>
     </div>
 
     <!-- Track label -->
-    <div class="mb-4 flex items-center gap-2 text-text-secondary">
-      <span class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-surface-border bg-surface-subtle">
-        <ion-icon name="musical-notes-outline"></ion-icon>
-      </span>
-      <span class="text-sm">{{ trackTitle }}</span>
+    <div class="mb-6 flex items-center justify-between text-text-secondary">
+      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2">
+          <button
+            class="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-surface-border bg-surface-subtle text-text-primary"
+            (click)="openSounds()" aria-label="Músicas">
+            <ion-icon name="musical-notes-outline"></ion-icon>
+          </button>
+          <button
+            class="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-surface-border bg-surface-subtle text-text-primary"
+            (click)="toggleMute()" [attr.aria-label]="isMuted ? 'Ativar som' : 'Mutar som'">
+            <ion-icon [name]="isMuted ? 'volume-mute' : 'volume-high'"></ion-icon>
+          </button>
+        </div>
+        <span class="text-sm truncate">{{ trackTitle }}</span>
+      </div>
+
     </div>
 
     <h2 class="mb-3 text-center text-2xl font-semibold">
@@ -27,7 +38,8 @@
 
     <!-- Circular timer -->
     <div class="relative mx-auto my-4 flex h-72 w-72 items-center justify-center">
-      <svg class="absolute" [attr.width]="(radius*2 + stroke*2)" [attr.height]="(radius*2 + stroke*2)" [attr.viewBox]="'0 0 ' + (radius*2 + stroke*2) + ' ' + (radius*2 + stroke*2)">
+      <svg class="absolute" [attr.width]="(radius*2 + stroke*2)" [attr.height]="(radius*2 + stroke*2)"
+        [attr.viewBox]="'0 0 ' + (radius*2 + stroke*2) + ' ' + (radius*2 + stroke*2)">
         <defs>
           <!-- Pomodoro: warm gradient -->
           <linearGradient id="gradPomodoro" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -45,28 +57,12 @@
             <stop offset="100%" stop-color="#FF4EDB" />
           </linearGradient>
         </defs>
-        <circle
-          [attr.cx]="radius + stroke"
-          [attr.cy]="radius + stroke"
-          [attr.r]="radius"
-          [attr.stroke-width]="stroke"
-          class="text-surface-subtle"
-          stroke="currentColor"
-          fill="transparent"
-          opacity="0.6"
-        />
-        <circle
-          [attr.cx]="radius + stroke"
-          [attr.cy]="radius + stroke"
-          [attr.r]="radius"
-          [attr.stroke-width]="stroke"
-          [attr.stroke]="'url(#' + gradientId + ')'"
-          fill="transparent"
-          [attr.stroke-dasharray]="circumference"
+        <circle [attr.cx]="radius + stroke" [attr.cy]="radius + stroke" [attr.r]="radius" [attr.stroke-width]="stroke"
+          class="text-surface-subtle" stroke="currentColor" fill="transparent" opacity="0.6" />
+        <circle [attr.cx]="radius + stroke" [attr.cy]="radius + stroke" [attr.r]="radius" [attr.stroke-width]="stroke"
+          [attr.stroke]="'url(#' + gradientId + ')'" fill="transparent" [attr.stroke-dasharray]="circumference"
           [attr.stroke-dashoffset]="dashOffset"
-          [attr.transform]="'rotate(-90 ' + (radius + stroke) + ' ' + (radius + stroke) + ')'"
-          stroke-linecap="round"
-        />
+          [attr.transform]="'rotate(-90 ' + (radius + stroke) + ' ' + (radius + stroke) + ')'" stroke-linecap="round" />
       </svg>
       <div class="relative z-10 text-center">
         <div class="text-5xl font-semibold tracking-wide">{{ formatTime(currentTime) }}</div>
@@ -75,20 +71,24 @@
 
     <!-- Controls -->
     <div class="mt-2 pb-10 flex items-center justify-center gap-3">
-      <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-red-600 text-white" (click)="stopTimer()">
+      <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-red-600 text-white"
+        (click)="stopTimer()">
         <ion-icon name="stop"></ion-icon>
       </button>
-      <button class="rounded-full bg-surface-subtle px-5 py-2 text-sm font-semibold text-text-primary" (click)="isRunning ? pauseTimer() : startTimer()">
+      <button class="rounded-full bg-surface-subtle px-5 py-2 text-sm font-semibold text-text-primary"
+        (click)="isRunning ? pauseTimer() : startTimer()">
         {{ isRunning ? 'PAUSE' : 'START' }}
       </button>
-      <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="openTimerSettings()">
+      <button
+        class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary"
+        (click)="openTimerSettings()">
         <ion-icon name="options-outline"></ion-icon>
       </button>
     </div>
 
     <!-- Cycle dots -->
     <app-cycle-dots class="pt-5" [total]="4" [completed]="completedCycles"></app-cycle-dots>
-    
+
   </div>
   <app-bottom-nav [active]="'timer'"></app-bottom-nav>
 

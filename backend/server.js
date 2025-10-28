@@ -240,13 +240,20 @@ app.post('/api/ciclos', ensureDBConnected, authenticateToken, async (req, res) =
 
             // Verificar se subiu de nível (100 XP por nível)
             const [user] = await db.execute('SELECT xp, nivel FROM usuarios WHERE id = ?', [userId]);
-            const novoNivel = Math.floor(user[0].xp / 100) + 1;
+            const xpAtual = user[0].xp;
+            const nivelAtual = user[0].nivel;
+            const novoNivel = Math.floor(xpAtual / 100) + 1;
 
-            if (novoNivel > user[0].nivel) {
+            let levelUp = false;
+            if (novoNivel > nivelAtual) {
                 await db.execute('UPDATE usuarios SET nivel = ? WHERE id = ?', [novoNivel, userId]);
+                levelUp = true;
             }
-        }
 
+            // Return updated xp/nivel in the response for real-time UI updates
+            return res.json({ message: 'Ciclo salvo com sucesso', cicloId: result.insertId, xp: xpAtual, nivel: levelUp ? novoNivel : nivelAtual, levelUp });
+        }
+        // Se não completado, apenas retorna sucesso básico
         res.json({ message: 'Ciclo salvo com sucesso', cicloId: result.insertId });
     } catch (error) {
         console.error('Erro ao salvar ciclo:', error);
@@ -369,7 +376,8 @@ app.get('/api/dias-foco', ensureDBConnected, authenticateToken, async (req, res)
     try {
         const userId = req.user.userId;
         // Parse date range from query or default to current month
-        const { start, end } = req.query;
+        const { start, end, tzOffset } = req.query;
+        const offsetMin = Number.isFinite(parseInt(tzOffset)) ? parseInt(tzOffset) : 0; // minutes, can be negative
 
         function toISODate(d) {
             const y = d.getFullYear();
@@ -393,7 +401,7 @@ app.get('/api/dias-foco', ensureDBConnected, authenticateToken, async (req, res)
 
         const [rows] = await db.execute(`
             SELECT 
-                DATE(data_criacao) as dia,
+                DATE(DATE_ADD(data_criacao, INTERVAL ? MINUTE)) as dia,
                 SUM(CASE WHEN tipo = 'foco' AND completado = 1 THEN duracao ELSE 0 END) as minutos_foco,
                 SUM(CASE WHEN tipo = 'foco' AND completado = 1 THEN 1 ELSE 0 END) as ciclos_foco,
                 SUM(CASE WHEN completado = 1 THEN 1 ELSE 0 END) as ciclos_completados,
@@ -401,10 +409,10 @@ app.get('/api/dias-foco', ensureDBConnected, authenticateToken, async (req, res)
                 SUM(CASE WHEN tipo = 'pausa_longa' AND completado = 1 THEN 1 ELSE 0 END) as pausas_longas
             FROM ciclos_pomodoro
             WHERE usuario_id = ?
-              AND DATE(data_criacao) BETWEEN ? AND ?
-            GROUP BY DATE(data_criacao)
+            GROUP BY DATE(DATE_ADD(data_criacao, INTERVAL ? MINUTE))
+            HAVING DATE(dia) BETWEEN ? AND ?
             ORDER BY dia ASC
-        `, [userId, startStr, endStr]);
+        `, [offsetMin, userId, offsetMin, startStr, endStr]);
 
         res.json({ range: { start: startStr, end: endStr }, days: rows });
     } catch (error) {

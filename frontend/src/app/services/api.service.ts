@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
@@ -8,7 +8,7 @@ import { environment } from '../../environments/environment';
 export class ApiService {
     private baseUrl = environment.production ? 'https://your-api-url.com' : 'http://localhost:3000';
 
-    constructor(private http: HttpClient) { }
+    private http = inject(HttpClient);
 
     private getHeaders(): HttpHeaders {
         const token = localStorage.getItem('focus_now_token');

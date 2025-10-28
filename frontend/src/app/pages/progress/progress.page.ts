@@ -1,5 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ModalController } from '@ionic/angular';
+import { Router } from '@angular/router';
 import { TimerService } from '../../services/timer.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -25,14 +26,13 @@ export class ProgressPage implements OnInit {
 
   // Calendar state
   monthDate = new Date();
-  weeks: Array<Array<{ date: Date | null; inMonth: boolean; focused: boolean }>> = [];
+  weeks: Array<Array<{ date: Date | null; inMonth: boolean; focused: boolean; inStreak: boolean; isToday: boolean; isPast: boolean }>> = [];
   private focusDateSet = new Set<string>();
   avgFocusHoursPerDay = 0;
 
-  constructor(
-    private timerService: TimerService,
-    private modalController: ModalController
-  ) { }
+  private timerService = inject(TimerService);
+  private modalController = inject(ModalController);
+  private router = inject(Router);
 
   ngOnInit() {
     this.loadEstatisticas();
@@ -59,19 +59,21 @@ export class ProgressPage implements OnInit {
         this.currentStreak = s?.currentStreak || 0;
         this.bestStreak = s?.bestStreak || 0;
         this.updateComputed();
+        // Rebuild to reflect streak overlay on the calendar when current month is displayed
+        this.buildCalendar();
       },
       error: (err) => {
         console.error('Erro ao carregar streak:', err);
         this.currentStreak = 0;
         this.bestStreak = 0;
         this.updateComputed();
+        this.buildCalendar();
       }
     });
   }
 
   async openAchievements() {
-    // TODO: Implement achievements modal
-    console.log('Achievements modal not implemented yet');
+    this.router.navigate(['/achievements']);
   }
 
   getConquistasAlcancadas() {
@@ -94,23 +96,46 @@ export class ProgressPage implements OnInit {
     return ['dom.', 'seg.', 'ter.', 'qua.', 'qui.', 'sex.', 'sáb.'];
   }
 
+  // Month range: only allow last 24 months including current month
+  private ymIndex(d: Date): number { return d.getFullYear() * 12 + d.getMonth(); }
+  get minMonthDate(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() - 23, 1);
+  }
+  get currentMonthStart(): Date {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  get canPrevMonth(): boolean {
+    return this.ymIndex(this.monthDate) > this.ymIndex(this.minMonthDate);
+  }
+  get canNextMonth(): boolean {
+    return this.ymIndex(this.monthDate) < this.ymIndex(this.currentMonthStart);
+  }
+
   private buildCalendar() {
     const first = new Date(this.monthDate.getFullYear(), this.monthDate.getMonth(), 1);
     const last = new Date(this.monthDate.getFullYear(), this.monthDate.getMonth() + 1, 0);
     const startOffset = first.getDay(); // 0=Sun
     const totalDays = last.getDate();
+    const streakSet = this.getStreakSetForDisplayedMonth();
+    const today = new Date();
+    const isCurrentMonth = today.getFullYear() === this.monthDate.getFullYear() && today.getMonth() === this.monthDate.getMonth();
+    const isBeforeCurrentMonth = (this.monthDate.getFullYear() < today.getFullYear()) || (this.monthDate.getFullYear() === today.getFullYear() && this.monthDate.getMonth() < today.getMonth());
 
-    const cells: Array<{ date: Date | null; inMonth: boolean; focused: boolean }> = [];
+    const cells: Array<{ date: Date | null; inMonth: boolean; focused: boolean; inStreak: boolean; isToday: boolean; isPast: boolean }> = [];
     // Leading blanks
-    for (let i = 0; i < startOffset; i++) cells.push({ date: null, inMonth: false, focused: false });
+    for (let i = 0; i < startOffset; i++) cells.push({ date: null, inMonth: false, focused: false, inStreak: false, isToday: false, isPast: false });
     // Month days
     for (let d = 1; d <= totalDays; d++) {
       const date = new Date(this.monthDate.getFullYear(), this.monthDate.getMonth(), d);
       const key = this.dateKey(date);
-      cells.push({ date, inMonth: true, focused: this.focusDateSet.has(key) });
+      const isToday = isCurrentMonth && date.getDate() === today.getDate();
+      const isPast = isBeforeCurrentMonth || (isCurrentMonth && date.getDate() < today.getDate());
+      cells.push({ date, inMonth: true, focused: this.focusDateSet.has(key), inStreak: streakSet.has(key), isToday, isPast });
     }
     // Trailing to complete weeks (up to 6 rows max)
-    while (cells.length % 7 !== 0) cells.push({ date: null, inMonth: false, focused: false });
+    while (cells.length % 7 !== 0) cells.push({ date: null, inMonth: false, focused: false, inStreak: false, isToday: false, isPast: false });
 
     // Split into weeks
     this.weeks = [];
@@ -129,17 +154,28 @@ export class ProgressPage implements OnInit {
     const last = new Date(this.monthDate.getFullYear(), this.monthDate.getMonth() + 1, 0);
     const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     const start = fmt(first), end = fmt(last);
+    // Send timezone offset in minutes (JS returns minutes to add to local to get UTC, we need the inverse)
+    const tzOffset = -new Date().getTimezoneOffset();
 
-    this.timerService.getDiasFoco(start, end).subscribe((res: any) => {
+    this.timerService.getDiasFoco(start, end, tzOffset).subscribe((res: any) => {
       const days = Array.isArray(res?.days) ? res.days : [];
       const newSet = new Set<string>();
       let totalMin = 0;
       let dayCount = 0;
+      const toKey = (v: any): string | null => {
+        if (!v) return null;
+        // If already in YYYY-MM-DD
+        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+        const dt = new Date(v);
+        if (isNaN(dt as any)) return null;
+        return this.dateKey(dt);
+      };
       for (const d of days) {
-        const dia = d.dia || d.DIA || d.date;
+        const diaRaw = d.dia || d.DIA || d.date;
         const minutos = Number(d.minutos_foco || 0);
-        if (dia && minutos > 0) {
-          newSet.add(String(dia));
+        const key = toKey(diaRaw);
+        if (key && minutos > 0) {
+          newSet.add(key);
           totalMin += minutos;
           dayCount += 1;
         }
@@ -154,13 +190,32 @@ export class ProgressPage implements OnInit {
     });
   }
 
+  // Compute which dates in the displayed month are part of the current streak
+  private getStreakSetForDisplayedMonth(): Set<string> {
+    const set = new Set<string>();
+    if (!this.currentStreak || this.currentStreak <= 0) return set;
+    const now = new Date();
+    const isCurrentMonth = now.getFullYear() === this.monthDate.getFullYear() && now.getMonth() === this.monthDate.getMonth();
+    if (!isCurrentMonth) return set;
+    for (let i = 0; i < this.currentStreak; i++) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      const key = this.dateKey(d);
+      // Only mark days that are actually focus days in this month
+      if (this.focusDateSet.has(key)) set.add(key);
+    }
+    return set;
+  }
+
   // Month navigation for the calendar
   prevMonth() {
+    if (!this.canPrevMonth) return;
     this.monthDate = new Date(this.monthDate.getFullYear(), this.monthDate.getMonth() - 1, 1);
     this.loadDiasFoco();
     this.buildCalendar();
   }
   nextMonth() {
+    if (!this.canNextMonth) return;
     this.monthDate = new Date(this.monthDate.getFullYear(), this.monthDate.getMonth() + 1, 1);
     this.loadDiasFoco();
     this.buildCalendar();
@@ -223,7 +278,7 @@ export class ProgressPage implements OnInit {
     const stats = this.estatisticas || {};
     const completed = Number(stats.ciclos_completados || 0);
     const cfg = this.timerService.getTimerConfig();
-    this.musicFound = cfg.alarmSound && cfg.alarmSound !== 'Alarme Padrão' ? 1 : 0;
+    this.musicFound = this.timerService.getDiscoveredSoundsCount();
 
     this.conquistas = [
       { nome: 'Tudo Se Inicia', descricao: 'Finalizar primeiro ciclo', alcançada: completed >= 1 },
@@ -233,5 +288,9 @@ export class ProgressPage implements OnInit {
       { nome: 'Dançando', descricao: 'Explore 4 sons diferentes', alcançada: false },
       { nome: 'Acontece...', descricao: 'Perca uma sequência', alcançada: this.currentStreak === 0 && completed > 0 }
     ];
+  }
+
+  openSounds() {
+    this.router.navigate(['/sounds']);
   }
 }

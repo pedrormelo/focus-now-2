@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, inject } from '@angular/core';
 import { ModalController } from '@ionic/angular';
 
 @Component({
@@ -9,7 +9,7 @@ import { ModalController } from '@ionic/angular';
 export class AchievementsModalPage {
     @Input() conquistas: any[] = [];
 
-    constructor(private modalController: ModalController) { }
+    private modalController = inject(ModalController);
 
     close() {
         this.modalController.dismiss();

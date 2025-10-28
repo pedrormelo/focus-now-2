@@ -1,0 +1,134 @@
+<ion-content [fullscreen]="true" class="bg-background text-text-primary">
+    <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6 px-5 py-6">
+        <!-- Header with Logo -->
+        <div class="flex items-center justify-between">
+            <app-logo height="28"></app-logo>
+            <button
+                class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary"
+                (click)="back()" aria-label="Voltar">
+                <ion-icon name="chevron-back-outline"></ion-icon>
+            </button>
+        </div>
+
+        <div class="flex items-end justify-between">
+            <h1 class="text-3xl font-bold">Músicas</h1>
+            <div class="flex items-center gap-2">
+                <div
+                    class="rounded-full border border-surface-border bg-surface-subtle px-3 py-1 text-xs text-text-secondary">
+                    Playlist: <span class="font-semibold text-text-primary">{{ playlist.length }}</span>
+                </div>
+                <div
+                    class="rounded-full border border-surface-border bg-surface-subtle px-3 py-1 text-xs text-text-secondary">
+                    Disponíveis: <span class="font-semibold text-text-primary">{{ available.length }}</span> de {{
+                    catalog.length }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Empty state for playlist -->
+        <div *ngIf="!playlist.length" class="rounded-3xl border border-surface-border bg-surface/90 p-4">
+            <div class="flex items-center gap-3">
+                <div>
+                    <div class="text-base font-semibold">Nenhuma música na playlist</div>
+                    <div class="text-sm text-text-secondary">Você ainda não adicionou músicas à sua playlist de foco. Veja as disponíveis abaixo e escolha as que mais gostar.</div>
+                    <div class="mt-3">
+                        <button class="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-surface-subtle px-3 py-2 text-sm" (click)="scrollToAvailable()">
+                            <ion-icon name="add"></ion-icon>
+                            <span>Adicionar músicas</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Playlist -->
+        <div class="space-y-2" *ngIf="playlist.length">
+            <div class="text-text-secondary text-sm">Playlist de Foco</div>
+            <div *ngFor="let s of playlist" class="rounded-3xl border border-surface-border bg-surface/90 p-3">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-surface-border bg-surface-subtle">
+                        <ion-icon name="musical-notes-outline" class="text-xl"></ion-icon>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-base font-semibold">{{ s.title }}</div>
+                        <div class="text-xs text-text-secondary">{{ s.artist }}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-surface-border bg-surface-subtle"
+                            (click)="play(s)" aria-label="Ouvir">
+                            <ion-icon [name]="isPlaying(s) ? 'pause' : 'play'"></ion-icon>
+                        </button>
+                        <button
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-surface-border bg-surface-subtle"
+                            (click)="remove(s)" aria-label="Remover da playlist">
+                            <ion-icon name="remove"></ion-icon>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Músicas Disponíveis (Desbloqueadas) -->
+        <div *ngIf="available.length" class="space-y-2" id="available-section">
+            <div class="text-text-secondary text-sm">Músicas Disponíveis</div>
+            <div *ngFor="let s of available" class="rounded-3xl border border-surface-border bg-surface/90 p-3">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-surface-border bg-surface-subtle">
+                        <ion-icon name="musical-notes-outline" class="text-xl"></ion-icon>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-base font-semibold">{{ s.title }}</div>
+                        <div class="text-xs text-text-secondary">{{ s.artist }}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-surface-border bg-surface-subtle"
+                            (click)="play(s)" aria-label="Ouvir">
+                            <ion-icon [name]="isPlaying(s) ? 'pause' : 'play'"></ion-icon>
+                        </button>
+                        <button *ngIf="!inPlaylist(s.id)"
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-surface-border bg-surface-subtle"
+                            (click)="add(s)" aria-label="Adicionar à playlist">
+                            <ion-icon name="add"></ion-icon>
+                        </button>
+                        <button *ngIf="inPlaylist(s.id)"
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-surface-border bg-surface-subtle"
+                            (click)="remove(s)" aria-label="Remover da playlist">
+                            <ion-icon name="remove"></ion-icon>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Indisponíveis (Bloqueadas) -->
+        <div *ngIf="unavailable.length" class="mb-20 space-y-2">
+            <div class="text-text-secondary text-sm">Indisponíveis</div>
+            <div *ngFor="let s of unavailable"
+                class="rounded-3xl border border-surface-border bg-surface/60 p-3 opacity-70">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="inline-flex h-12 w-12 items-center justify-center rounded-2xl border-2 border-surface-border bg-surface-subtle">
+                        <ion-icon name="lock-closed-outline" class="text-xl"></ion-icon>
+                    </div>
+                    <div class="flex-1">
+                        <div class="text-base font-semibold">{{ s.title }}</div>
+                        <div class="text-xs text-text-secondary">{{ s.artist }}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button
+                            class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-surface-border bg-surface-subtle opacity-50 cursor-not-allowed"
+                            disabled aria-label="Bloqueado">
+                            <ion-icon name="add"></ion-icon>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <app-bottom-nav [active]="'progress'"></app-bottom-nav>
+    </div>
+</ion-content>

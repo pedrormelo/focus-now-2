@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ModalController, ToastController } from '@ionic/angular';
 import { TimerService } from '../../services/timer.service';
 import { AuthService } from '../../services/auth.service';
@@ -23,13 +23,11 @@ export class SettingsPage implements OnInit {
         mutar: false
     };
 
-    constructor(
-        private modalController: ModalController,
-        private timerService: TimerService,
-        private authService: AuthService,
-        private router: Router,
-        private toastController: ToastController
-    ) { }
+    private modalController = inject(ModalController);
+    private timerService = inject(TimerService);
+    private authService = inject(AuthService);
+    private router = inject(Router);
+    private toastController = inject(ToastController);
 
     ngOnInit() {
         // Carregar configurações salvas

@@ -1,12 +1,16 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, of, firstValueFrom } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 
 export interface User {
     id: number;
-    username: string;
+    nome?: string;
+    username?: string;
     email: string;
+    objetivo?: string;
+    nivel?: number;
+    xp?: number;
 }
 
 @Injectable({
@@ -17,7 +21,9 @@ export class AuthService {
     private currentUserSubject = new BehaviorSubject<User | null>(null);
     public currentUser$ = this.currentUserSubject.asObservable();
 
-    constructor(private http: HttpClient) {
+    private http = inject(HttpClient);
+
+    constructor() {
         this.loadStoredUser();
     }
 
@@ -74,5 +80,15 @@ export class AuthService {
 
     getToken(): string | null {
         return localStorage.getItem('focus_now_token');
+    }
+
+    // Merge partial updates (e.g., xp/nivel) into the current user and persist
+    updateCurrentUser(partial: Partial<User>): void {
+        const cur = this.currentUserSubject.value || ({} as User);
+        const updated: User = { ...cur, ...partial } as User;
+        this.currentUserSubject.next(updated);
+        try {
+            localStorage.setItem('focus_now_user', JSON.stringify(updated));
+        } catch { /* ignore */ }
     }
 }

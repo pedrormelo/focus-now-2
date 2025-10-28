@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule, ModalController } from '@ionic/angular';
@@ -94,7 +94,7 @@ import { IonicModule, ModalController } from '@ionic/angular';
     `
     ]
 })
-export class TimerSettingsModalComponent {
+export class TimerSettingsModalComponent implements OnInit {
     @Input() config?: {
         pomodoro: number; shortBreak: number; longBreak: number; longBreakInterval: number; alarmSound?: string;
     };
@@ -109,7 +109,7 @@ export class TimerSettingsModalComponent {
 
     alarmSounds = ['Alarme Padrão', 'Sino', 'Digital', 'Natureza'];
 
-    constructor(private modalCtrl: ModalController) { }
+  private modalCtrl = inject(ModalController);
 
     ngOnInit() {
         if (this.config) {

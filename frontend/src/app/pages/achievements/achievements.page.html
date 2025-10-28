@@ -1,0 +1,37 @@
+<ion-content [fullscreen]="true" class="bg-background text-text-primary">
+  <div class="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-6 px-5 py-6">
+    <!-- Header with Logo -->
+    <div class="flex items-center justify-between">
+      <app-logo height="28"></app-logo>
+      <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="back()" aria-label="Voltar">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </button>
+    </div>
+
+    <h1 class="text-3xl font-bold">Conquistas</h1>
+
+    <!-- Counter card -->
+    <div class="rounded-3xl border border-surface-border bg-surface/90 p-4">
+      <div class="text-xl font-semibold">{{ conquistasAlcancadas }} de {{ conquistas.length }} Alcançadas</div>
+      <div class="mt-2 h-3 rounded-full bg-surface-subtle">
+        <div class="h-3 rounded-full bg-gradient-to-r from-brand-gradientStart to-brand-gradientEnd" [style.width.%]="(conquistas.length ? (conquistasAlcancadas / conquistas.length) * 100 : 0)"></div>
+      </div>
+    </div>
+
+  <div class="space-y-4 mb-20">
+      <div *ngFor="let c of conquistas" class="rounded-3xl border border-surface-border bg-surface/90 p-4">
+        <div class="flex items-center gap-4">
+          <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2" [ngClass]="c.alcancada ? 'border-brand-accent bg-surface-subtle' : 'border-surface-border bg-surface-subtle opacity-60'">
+            <ion-icon [name]="c.alcancada ? 'trophy' : 'trophy-outline'" class="text-2xl"></ion-icon>
+          </div>
+          <div class="flex-1" [class.opacity-60]="!c.alcancada">
+            <div class="text-xl font-semibold">{{ c.nome }}</div>
+            <div class="text-text-secondary">{{ c.descricao }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <app-bottom-nav [active]="'progress'"></app-bottom-nav>
+  </div>
+</ion-content>

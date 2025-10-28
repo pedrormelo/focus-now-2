@@ -19,7 +19,8 @@
     <!-- Metrics cards -->
     <div class="space-y-4">
       <!-- Conquistas -->
-      <div class="rounded-3xl border border-surface-border bg-surface/90 p-4">
+      <div class="rounded-3xl border border-surface-border bg-surface/90 p-4 cursor-pointer hover:bg-surface/95 transition"
+           (click)="openAchievements()" role="button" aria-label="Abrir Conquistas" tabindex="0">
         <div class="flex items-center gap-4">
           <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-brand-accent/80 bg-surface-subtle">
             <ion-icon name="trophy-outline" class="text-2xl"></ion-icon>
@@ -35,7 +36,8 @@
       </div>
 
       <!-- Músicas e Sons -->
-      <div class="rounded-3xl border border-surface-border bg-surface/90 p-4">
+      <div class="rounded-3xl border border-surface-border bg-surface/90 p-4 cursor-pointer hover:bg-surface/95 transition"
+           (click)="openSounds()" role="button" aria-label="Abrir Sons" tabindex="0">
         <div class="flex items-center gap-4">
           <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-brand-accent/80 bg-surface-subtle">
             <ion-icon name="musical-notes-outline" class="text-2xl"></ion-icon>
@@ -81,19 +83,20 @@
 
     <!-- Month label with navigation -->
     <div class="mx-auto flex w-max items-center gap-2 rounded-full bg-surface-subtle px-3 py-1 text-sm">
-      <button class="inline-flex h-7 w-7 items-center justify-center rounded-full text-text-secondary hover:text-text-primary" (click)="prevMonth()" aria-label="Mês anterior">
+      <button class="inline-flex h-7 w-7 items-center justify-center rounded-full text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="!canPrevMonth" (click)="prevMonth()" aria-label="Mês anterior">
         <ion-icon name="chevron-back-outline"></ion-icon>
       </button>
       <div>
         <span class="text-text-secondary">Dias de </span><span class="font-semibold">foco</span> em {{ monthLabel }}
       </div>
-      <button class="inline-flex h-7 w-7 items-center justify-center rounded-full text-text-secondary hover:text-text-primary" (click)="nextMonth()" aria-label="Próximo mês">
+      <button class="inline-flex h-7 w-7 items-center justify-center rounded-full text-text-secondary hover:text-text-primary disabled:opacity-50 disabled:cursor-not-allowed" [disabled]="!canNextMonth" (click)="nextMonth()" aria-label="Próximo mês">
         <ion-icon name="chevron-forward-outline"></ion-icon>
       </button>
     </div>
 
     <!-- Calendar -->
-    <div class="pb-16">
+    <div class="mb-20">
+
       <div class="grid grid-cols-7 text-center text-sm text-text-secondary">
         <div *ngFor="let d of daysOfWeek" class="py-1">{{ d }}</div>
       </div>
@@ -102,7 +105,13 @@
           <ng-container *ngFor="let cell of week">
             <div class="flex h-10 items-center justify-center">
               <ng-container *ngIf="cell.date; else empty">
-                <span [ngClass]="cell.focused ? 'rounded-md bg-brand-accent px-2 py-1 text-white' : 'text-text-primary'">
+                <span [ngClass]="[
+                  cell.isToday ? 'rounded-md bg-gradient-to-r from-brand-gradientStart to-brand-gradientEnd text-white font-semibold px-2 py-1' : '',
+                  (!cell.isToday && cell.focused) ? 'rounded-md bg-brand-accent/20 text-brand-accent font-semibold px-2 py-1' : '',
+                  (!cell.isToday && !cell.focused && cell.inStreak) ? 'rounded-md ring-2 ring-brand-accent/60 px-2 py-1' : '',
+                  (!cell.isToday && !cell.focused && !cell.inStreak && cell.isPast) ? 'text-text-secondary' : '',
+                  (!cell.isToday && !cell.focused && !cell.inStreak && !cell.isPast) ? 'text-text-primary' : ''
+                ]">
                   {{ cell.date.getDate() }}
                 </span>
               </ng-container>
@@ -112,6 +121,22 @@
             </div>
           </ng-container>
         </ng-container>
+      </div>
+
+            <!-- Legend -->
+      <div class="mt-6 mb-2 flex justify-center flex-wrap items-center gap-3 text-xs text-text-secondary">
+        <div class="flex items-center gap-2">
+          <span class="rounded-md bg-gradient-to-r from-brand-gradientStart to-brand-gradientEnd px-2 py-0.5 text-white font-semibold">Hoje</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="rounded-md bg-brand-accent/20 px-2 py-0.5 text-brand-accent font-semibold">Foco</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="rounded-md ring-2 ring-brand-accent/60 px-2 py-0.5">Sequência</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 text-text-secondary">Passado</span>
+        </div>
       </div>
     </div>
 

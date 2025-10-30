@@ -2,6 +2,11 @@
   <div class="mx-auto w-full max-w-3xl px-5 py-6">
     <div class="mb-6 flex items-center justify-between">
       <app-logo height="28"></app-logo>
+      <button
+        class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary"
+        (click)="back()" aria-label="Voltar">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </button>
     </div>
 
     <div class="mb-6 rounded-3xl border border-surface-border bg-surface/90 p-6">

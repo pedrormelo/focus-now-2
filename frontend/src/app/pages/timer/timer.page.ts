@@ -8,6 +8,8 @@ import { LogoComponent } from '../../components/logo/logo.component';
 import { BottomNavComponent } from '../../components/bottom-nav/bottom-nav.component';
 import { CycleDotsComponent } from '../../components/cycle-dots/cycle-dots.component';
 import { TimerSettingsModalComponent } from '../../components/timer-settings-modal/timer-settings-modal.component';
+import { CelebrationService } from '../../services/celebration.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-timer',
@@ -30,6 +32,10 @@ export class TimerPage implements OnInit {
   private timerService = inject(TimerService);
   private router = inject(Router);
   private modalCtrl = inject(ModalController);
+  private celebrate = inject(CelebrationService);
+
+  // Dev-only helper flag for showing celebration test buttons
+  isDev = !environment.production && !!(environment as any).showCelebrationTester;
 
   ngOnInit() {
     this.loadSettings();
@@ -83,6 +89,11 @@ export class TimerPage implements OnInit {
   openSettings() { this.router.navigate(['/settings']); }
   openSounds() { this.router.navigate(['/sounds']); }
   toggleMute() { this.timerService.setMuted(!this.isMuted); }
+
+  // --- Dev celebration testers ---
+  testAchievement() { if (this.isDev) this.celebrate.celebrateAchievement(); }
+  testMusic() { if (this.isDev) this.celebrate.celebrateMusicUnlocked(); }
+  testLevel() { if (this.isDev) this.celebrate.celebrateLevelUp(); }
 
   async openTimerSettings() {
     const current = this.timerService.getTimerConfig();

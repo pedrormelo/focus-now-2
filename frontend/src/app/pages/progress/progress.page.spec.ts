@@ -21,7 +21,9 @@ describe('ProgressPage', () => {
             getDiasFoco: () => of({ days: [] }),
             getHistorico: () => of([]),
             getTimerConfig: () => ({ pomodoro: 25, shortBreak: 5, longBreak: 15, longBreakInterval: 4 }),
-            getDiscoveredSoundsCount: () => 0
+            // Updated mocks for music catalog progress
+            getSoundCatalogTotal: () => 4,
+            getDiscoveredCatalogCount: () => 0
           }
         }
       ]

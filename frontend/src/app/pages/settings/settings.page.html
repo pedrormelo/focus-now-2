@@ -1,25 +1,30 @@
 <ion-content [fullscreen]="true" class="bg-background text-text-primary">
   <div class="mx-auto w-full max-w-3xl px-5 py-6">
-    <!-- Header with Logo -->
+    <!-- Header with Logo + Back -->
     <div class="mb-6 flex items-center justify-between">
       <app-logo height="28"></app-logo>
-      <button class="inline-flex h-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle px-4 text-sm font-medium text-text-primary" (click)="logout()">
-        Sair
+      <button
+        class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary"
+        (click)="back()" aria-label="Voltar">
+        <ion-icon name="chevron-back-outline"></ion-icon>
       </button>
     </div>
 
     <!-- Timer settings card -->
     <div class="mb-4 rounded-3xl border border-surface-border bg-surface/90 p-5">
-      <div class="mb-3 flex items-center justify-between">
-        <div class="flex items-center gap-3 text-text-primary">
-          <ion-icon name="time-outline"></ion-icon>
-          <h2 class="text-lg font-semibold">Timer</h2>
-        </div>
-        <button class="rounded-xl border border-surface-border px-3 py-1 text-sm" (click)="openTimerSettings()">Personalizar</button>
+      <div class="mb-2 flex items-center gap-3 text-text-primary">
+        <ion-icon name="time-outline"></ion-icon>
+        <h2 class="text-lg font-semibold">Timer</h2>
+      </div>
+      <div class="mb-3 text-sm text-text-secondary">
+        Pomodoro: {{ timerConfig.pomodoro }} • Pausa Curta: {{ timerConfig.shortBreak }} • Pausa Longa: {{ timerConfig.longBreak }} • Longo a cada {{ timerConfig.longBreakInterval }} ciclos
       </div>
       <div class="grid gap-3 sm:grid-cols-2">
         <label class="flex items-center justify-between rounded-2xl border border-surface-border bg-surface-subtle px-4 py-3">
-          <span class="text-sm">Modo Automático</span>
+          <span>
+            <span class="block text-sm">Modo Automático</span>
+            <span class="block text-xs text-text-secondary">Alterna automaticamente entre foco e pausas</span>
+          </span>
           <ion-toggle [(ngModel)]="settings.modoAutomatico" (ionChange)="saveSettings()"></ion-toggle>
         </label>
       </div>
@@ -47,14 +52,35 @@
       </div>
       <div class="grid gap-3 sm:grid-cols-2">
         <label class="flex items-center justify-between rounded-2xl border border-surface-border bg-surface-subtle px-4 py-3">
-          <span class="text-sm">Notificações</span>
+          <span>
+            <span class="block text-sm">Notificações</span>
+            <span class="block text-xs text-text-secondary">Ativar notificações do app</span>
+          </span>
           <ion-toggle [(ngModel)]="settings.notificacoes" (ionChange)="saveSettings()"></ion-toggle>
         </label>
         <label class="flex items-center justify-between rounded-2xl border border-surface-border bg-surface-subtle px-4 py-3">
-          <span class="text-sm">Mutar</span>
+          <span>
+            <span class="block text-sm">Mutar</span>
+            <span class="block text-xs text-text-secondary">Silenciar sons do app</span>
+          </span>
           <ion-toggle [(ngModel)]="settings.mutar" (ionChange)="saveSettings()"></ion-toggle>
         </label>
       </div>
+    </div>
+
+    <!-- Account / Logout card -->
+    <div class="mb-6 rounded-3xl border border-surface-border bg-surface/90 p-5">
+      <div class="mb-2 flex items-center gap-3 text-text-primary">
+        <ion-icon name="person-circle-outline"></ion-icon>
+        <h2 class="text-lg font-semibold">Conta</h2>
+      </div>
+      <p class="mb-3 text-sm text-text-secondary">Sair da sua conta neste dispositivo.</p>
+      <button
+        class="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-surface-subtle px-3 py-2 text-sm text-red-600"
+        (click)="logout()" aria-label="Sair da conta (Logout)">
+        <ion-icon name="log-out-outline"></ion-icon>
+        <span>Sair da conta (Logout)</span>
+      </button>
     </div>
 
     <div class="rounded-3xl border border-surface-border bg-surface/90 p-5 text-sm text-text-secondary">

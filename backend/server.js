@@ -127,6 +127,40 @@ async function createTables() {
             )
         `);
 
+        // Sons desbloqueados por usuário
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS user_unlocked_sounds (
+                user_id INT NOT NULL,
+                sound_id VARCHAR(100) NOT NULL,
+                unlocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, sound_id),
+                FOREIGN KEY (user_id) REFERENCES usuarios(id)
+            )
+        `);
+
+        // Playlist do usuário (ordem pela coluna position)
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS user_playlists (
+                user_id INT NOT NULL,
+                position INT NOT NULL,
+                sound_id VARCHAR(100) NOT NULL,
+                PRIMARY KEY (user_id, position),
+                FOREIGN KEY (user_id) REFERENCES usuarios(id)
+            )
+        `);
+
+        // Conquistas do usuário
+        await db.execute(`
+            CREATE TABLE IF NOT EXISTS user_achievements (
+                user_id INT NOT NULL,
+                \`key\` VARCHAR(100) NOT NULL,
+                achieved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                seen BOOLEAN DEFAULT FALSE,
+                PRIMARY KEY (user_id, \`key\`),
+                FOREIGN KEY (user_id) REFERENCES usuarios(id)
+            )
+        `);
+
         // Indexes to speed up calendar/day queries
         try {
             await db.execute(`CREATE INDEX idx_ciclos_user_date ON ciclos_pomodoro (usuario_id, data_criacao)`);
@@ -250,8 +284,58 @@ app.post('/api/ciclos', ensureDBConnected, authenticateToken, async (req, res) =
                 levelUp = true;
             }
 
-            // Return updated xp/nivel in the response for real-time UI updates
-            return res.json({ message: 'Ciclo salvo com sucesso', cicloId: result.insertId, xp: xpAtual, nivel: levelUp ? novoNivel : nivelAtual, levelUp });
+            // Após atualizar XP/nível, calcular sons desbloqueados no servidor
+            const unlockRules = [
+                { id: 'Sons da Floresta', minLevel: 1 },
+                { id: 'Sons de Chuva', minCycles: 2 },
+                { id: 'Quiet Resource - Evelyn', minLevel: 2 },
+                { id: 'Saudade - Gabriel Albuquerque', minLevel: 3 },
+                { id: 'Mix de Frases #1', minCycles: 4 },
+                { id: 'Mix de Frases #2', minLevel: 4 }
+            ];
+
+            // Total de ciclos completados do usuário (qualquer tipo, completado = 1)
+            const [stats] = await db.execute(
+                `SELECT COUNT(*) AS ciclos_completados FROM ciclos_pomodoro WHERE usuario_id = ? AND completado = 1`,
+                [userId]
+            );
+            const totalCompleted = stats[0]?.ciclos_completados || 0;
+            const effectiveLevel = levelUp ? novoNivel : nivelAtual;
+
+            // Obter sons já desbloqueados
+            const [already] = await db.execute(
+                `SELECT sound_id FROM user_unlocked_sounds WHERE user_id = ?`,
+                [userId]
+            );
+            const owned = new Set(already.map(r => r.sound_id));
+            const newlyUnlocked = [];
+            for (const rule of unlockRules) {
+                if (owned.has(rule.id)) continue;
+                const meetsLevel = typeof rule.minLevel === 'number' ? effectiveLevel >= rule.minLevel : true;
+                const meetsCycles = typeof rule.minCycles === 'number' ? totalCompleted >= rule.minCycles : true;
+                if (meetsLevel && meetsCycles) {
+                    newlyUnlocked.push(rule.id);
+                }
+            }
+
+            if (newlyUnlocked.length) {
+                const values = newlyUnlocked.map(id => [userId, id]);
+                // Bulk insert ignoring duplicates
+                await db.query(
+                    `INSERT IGNORE INTO user_unlocked_sounds (user_id, sound_id) VALUES ?`,
+                    [values]
+                );
+            }
+
+            // Return updated xp/nivel and newly unlocked list
+            return res.json({
+                message: 'Ciclo salvo com sucesso',
+                cicloId: result.insertId,
+                xp: xpAtual,
+                nivel: levelUp ? novoNivel : nivelAtual,
+                levelUp,
+                newlyUnlocked
+            });
         }
         // Se não completado, apenas retorna sucesso básico
         res.json({ message: 'Ciclo salvo com sucesso', cicloId: result.insertId });
@@ -489,5 +573,112 @@ app.get('/api/streak', ensureDBConnected, authenticateToken, async (req, res) =>
     } catch (error) {
         console.error('Erro ao calcular streak:', error);
         res.status(500).json({ error: error?.message || 'Erro ao calcular streak' });
+    }
+});
+
+// --- User config (timer) ---
+app.get('/api/me/timer-config', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const [rows] = await db.execute(`SELECT tempo_foco, tempo_pausa_curta, tempo_pausa_longa, intervalo_pausa_longa FROM configuracoes WHERE usuario_id = ?`, [userId]);
+        if (rows.length === 0) {
+            // Create default record
+            await db.execute(`INSERT INTO configuracoes (usuario_id) VALUES (?)`, [userId]);
+            return res.json({ pomodoro: 25, shortBreak: 5, longBreak: 15, longBreakInterval: 4 });
+        }
+        const c = rows[0];
+        return res.json({ pomodoro: c.tempo_foco, shortBreak: c.tempo_pausa_curta, longBreak: c.tempo_pausa_longa, longBreakInterval: c.intervalo_pausa_longa });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Erro ao carregar configurações' });
+    }
+});
+
+app.put('/api/me/timer-config', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { pomodoro, shortBreak, longBreak, longBreakInterval } = req.body || {};
+        // Upsert
+        await db.execute(`INSERT INTO configuracoes (usuario_id, tempo_foco, tempo_pausa_curta, tempo_pausa_longa, intervalo_pausa_longa) VALUES (?, ?, ?, ?, ?) 
+            ON DUPLICATE KEY UPDATE tempo_foco = VALUES(tempo_foco), tempo_pausa_curta = VALUES(tempo_pausa_curta), tempo_pausa_longa = VALUES(tempo_pausa_longa), intervalo_pausa_longa = VALUES(intervalo_pausa_longa)`,
+            [userId, pomodoro || 25, shortBreak || 5, longBreak || 15, longBreakInterval || 4]
+        );
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Erro ao salvar configurações' });
+    }
+});
+
+// --- Unlocks ---
+app.get('/api/me/unlocks', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const [rows] = await db.execute(`SELECT sound_id FROM user_unlocked_sounds WHERE user_id = ? ORDER BY unlocked_at ASC`, [userId]);
+        res.json(rows.map(r => r.sound_id));
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Erro ao carregar desbloqueios' });
+    }
+});
+
+// --- Playlist ---
+app.get('/api/me/playlist', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const [rows] = await db.execute(`SELECT sound_id FROM user_playlists WHERE user_id = ? ORDER BY position ASC`, [userId]);
+        res.json(rows.map(r => r.sound_id));
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Erro ao carregar playlist' });
+    }
+});
+
+app.put('/api/me/playlist', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const items = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.items) ? req.body.items : []);
+        // replace playlist
+        await db.execute(`DELETE FROM user_playlists WHERE user_id = ?`, [userId]);
+        if (items.length) {
+            const values = items.map((id, idx) => [userId, idx, id]);
+            await db.query(`INSERT INTO user_playlists (user_id, position, sound_id) VALUES ?`, [values]);
+        }
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Erro ao salvar playlist' });
+    }
+});
+
+// --- Achievements ---
+app.get('/api/me/achievements', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const [rows] = await db.execute(`SELECT \`key\`, seen, achieved_at FROM user_achievements WHERE user_id = ?`, [userId]);
+        const map = {};
+        for (const r of rows) map[r.key] = { seen: !!r.seen, achieved_at: r.achieved_at };
+        res.json(map);
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Erro ao carregar conquistas' });
+    }
+});
+
+app.post('/api/me/achievements/achieve', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { key } = req.body || {};
+        if (!key) return res.status(400).json({ error: 'key é obrigatório' });
+        await db.execute(`INSERT IGNORE INTO user_achievements (user_id, \`key\`, seen) VALUES (?, ?, 0)`, [userId, key]);
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Erro ao registrar conquista' });
+    }
+});
+
+app.post('/api/me/achievements/seen', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { key } = req.body || {};
+        if (!key) return res.status(400).json({ error: 'key é obrigatório' });
+        await db.execute(`UPDATE user_achievements SET seen = 1 WHERE user_id = ? AND \`key\` = ?`, [userId, key]);
+        res.json({ ok: true });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Erro ao marcar como visto' });
     }
 });

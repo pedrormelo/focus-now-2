@@ -20,8 +20,8 @@ export class ProgressPage implements OnInit {
   currentStreak = 0;
   bestStreak = 0;
   conquistas: Array<{ nome: string; descricao: string; alcançada: boolean }> = [];
-  // MVP: treat alarm sound selection as discovery progress
-  alarmSounds = ['Alarme Padrão', 'Sino', 'Digital', 'Natureza'];
+  // Music discovery now follows unlockable catalog in TimerService
+  soundsTotal = 0;
   musicFound = 0;
 
   // Calendar state
@@ -39,6 +39,8 @@ export class ProgressPage implements OnInit {
     this.loadStreak();
     this.loadDiasFoco();
     this.buildCalendar();
+    // Initialize totals from service
+    this.soundsTotal = this.timerService.getSoundCatalogTotal();
   }
 
   loadEstatisticas() {
@@ -74,6 +76,10 @@ export class ProgressPage implements OnInit {
 
   async openAchievements() {
     this.router.navigate(['/achievements']);
+  }
+
+  openSettings() {
+    this.router.navigate(['/settings']);
   }
 
   getConquistasAlcancadas() {
@@ -260,8 +266,9 @@ export class ProgressPage implements OnInit {
   }
 
   get musicPercent(): number {
-    const total = this.alarmSounds.length || 1;
-    return Math.round((this.getMusicasEncontradas() / total) * 100);
+    const total = this.soundsTotal || 1;
+    const pct = Math.round((this.getMusicasEncontradas() / total) * 100);
+    return Math.max(0, Math.min(100, pct));
   }
 
   get focusHours(): number {
@@ -278,7 +285,8 @@ export class ProgressPage implements OnInit {
     const stats = this.estatisticas || {};
     const completed = Number(stats.ciclos_completados || 0);
     const cfg = this.timerService.getTimerConfig();
-    this.musicFound = this.timerService.getDiscoveredSoundsCount();
+    // Only count catalog sounds
+    this.musicFound = this.timerService.getDiscoveredCatalogCount();
 
     this.conquistas = [
       { nome: 'Tudo Se Inicia', descricao: 'Finalizar primeiro ciclo', alcançada: completed >= 1 },

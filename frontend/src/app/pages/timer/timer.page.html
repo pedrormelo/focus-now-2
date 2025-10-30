@@ -92,5 +92,22 @@
   </div>
   <app-bottom-nav [active]="'timer'"></app-bottom-nav>
 
+  <!-- Dev-only Celebration Tester -->
+  <ion-fab *ngIf="isDev" vertical="bottom" horizontal="end" edge slot="fixed">
+    <ion-fab-button size="small">
+      <ion-icon name="sparkles-outline"></ion-icon>
+    </ion-fab-button>
+    <ion-fab-list side="top">
+      <ion-fab-button size="small" (click)="testLevel()" title="Testar Nível">
+        <ion-icon name="star-outline"></ion-icon>
+      </ion-fab-button>
+      <ion-fab-button size="small" (click)="testMusic()" title="Testar Música">
+        <ion-icon name="musical-notes-outline"></ion-icon>
+      </ion-fab-button>
+      <ion-fab-button size="small" (click)="testAchievement()" title="Testar Conquista">
+        <ion-icon name="medal-outline"></ion-icon>
+      </ion-fab-button>
+    </ion-fab-list>
+  </ion-fab>
 
 </ion-content>

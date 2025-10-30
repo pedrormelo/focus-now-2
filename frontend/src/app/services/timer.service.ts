@@ -34,6 +34,7 @@ export class TimerService {
     private autoMode = true;
     private discoveredSounds = new Set<string>();
     private playlist: string[] = [];
+    private achievements: Record<string, { seen?: boolean; achieved_at?: string }> = {};
     private muted = false;
     // Unlock rules for focus sounds: by level and/or total completed cycles
     private unlockRules: Record<string, { minLevel?: number; minCycles?: number }> = {
@@ -48,10 +49,27 @@ export class TimerService {
     private http = inject(HttpClient);
     private auth = inject(AuthService);
     private celebrate = inject(CelebrationService);
+    private userSub: any;
 
     constructor() {
-        this.loadDiscoveredSounds();
-        this.loadPlaylist();
+        // Load server state for current user
+        this.bootstrapFromServer();
+        // React to user changes to load fresh server state
+        this.userSub = this.auth.currentUser$.subscribe(() => {
+            this.bootstrapFromServer();
+        });
+    }
+
+    private async bootstrapFromServer() {
+        this.discoveredSounds = new Set<string>();
+        this.playlist = [];
+        this.achievements = {};
+        await Promise.all([
+            this.fetchTimerConfig().catch(() => {}),
+            this.fetchUnlocks().catch(() => {}),
+            this.fetchPlaylist().catch(() => {}),
+            this.fetchAchievements().catch(() => {})
+        ]);
     }
 
     private getAuthHeaders(): HttpHeaders {
@@ -128,17 +146,22 @@ export class TimerService {
                 if ((resp?.levelUp === true) || ((resp?.nivel || prevNivel) > prevNivel)) {
                     this.celebrate.celebrateLevelUp();
                 }
+                // Process newly unlocked sounds from server
+                const newly = Array.isArray(resp?.newlyUnlocked) ? resp.newlyUnlocked as string[] : [];
+                if (newly.length) {
+                    let count = 0;
+                    for (const id of newly) {
+                        if (!this.discoveredSounds.has(id)) {
+                            this.discoveredSounds.add(id);
+                            count++;
+                            this.onMusicUnlocked();
+                        }
+                    }
+                }
                 // Check streak-based achievements (4, 7, 14)
                 this.checkAndCelebrateStreakMilestones();
-                // Re-evaluate sound unlocks using latest stats (cycles completed)
-                this.getEstatisticas().subscribe({
-                    next: (stats: any) => {
-                        const cycles = stats?.ciclos_completados ?? 0;
-                        const lvl = this.auth.getCurrentUser()?.nivel || prevNivel;
-                        this.checkAndUnlockSounds(lvl, cycles);
-                    },
-                    error: () => { /* ignore */ }
-                });
+                // Optionally refresh unlock list from server in background
+                this.fetchUnlocks();
             },
             error: () => { /* ignore for now */ }
         });
@@ -194,11 +217,19 @@ export class TimerService {
         return { ...this.timerConfig };
     }
 
-    updateTimerConfig(config: any) {
+    async updateTimerConfig(config: any) {
         this.timerConfig = { ...this.timerConfig, ...config };
+        // Persist to server
+        try {
+            await this.http.put(`${this.apiUrl}/me/timer-config`, {
+                pomodoro: this.timerConfig.pomodoro,
+                shortBreak: this.timerConfig.shortBreak,
+                longBreak: this.timerConfig.longBreak,
+                longBreakInterval: this.timerConfig.longBreakInterval
+            }, { headers: this.getAuthHeaders() }).toPromise();
+        } catch { /* ignore transient */ }
         // Recalculate totals for current type
         this.resetForCurrentType();
-        // No longer auto-discover sounds via alarm selection; unlocking is gated by level/cycles now.
     }
 
     // Convenience getters for components
@@ -244,34 +275,33 @@ export class TimerService {
         return 'pausa_longa';
     }
 
-    // Sounds discovery tracking
-    private loadDiscoveredSounds() {
+    // Server-backed: unlocks
+    private async fetchUnlocks() {
         try {
-            const raw = localStorage.getItem('discoveredSounds');
-            if (raw) {
-                const arr = JSON.parse(raw);
-                if (Array.isArray(arr)) arr.forEach((s) => { if (typeof s === 'string') this.discoveredSounds.add(s); });
-            }
+            const list = await this.http.get<string[]>(`${this.apiUrl}/me/unlocks`, { headers: this.getAuthHeaders() }).toPromise();
+            (list || []).forEach(id => this.discoveredSounds.add(id));
         } catch { /* ignore */ }
-    }
-    private persistDiscoveredSounds() {
-        try { localStorage.setItem('discoveredSounds', JSON.stringify(Array.from(this.discoveredSounds))); } catch { /* ignore */ }
     }
     getDiscoveredSounds(): string[] { return Array.from(this.discoveredSounds); }
     getDiscoveredSoundsCount(): number { return this.discoveredSounds.size; }
-
-    // Focus playlist management
-    private loadPlaylist() {
-        try {
-            const raw = localStorage.getItem('focusPlaylist');
-            if (raw) {
-                const arr = JSON.parse(raw);
-                if (Array.isArray(arr)) this.playlist = arr.filter((s) => typeof s === 'string');
-            }
-        } catch { /* ignore */ }
+    // Only count sounds that are part of our unlockable catalog
+    getDiscoveredCatalogCount(): number {
+        const keys = Object.keys(this.unlockRules);
+        let count = 0;
+        for (const k of keys) if (this.discoveredSounds.has(k)) count++;
+        return count;
     }
-    private persistPlaylist() {
-        try { localStorage.setItem('focusPlaylist', JSON.stringify(this.playlist)); } catch { /* ignore */ }
+    getSoundCatalogTotal(): number { return Object.keys(this.unlockRules).length; }
+
+    // Focus playlist management (server-backed)
+    private async fetchPlaylist() {
+        try {
+            const arr = await this.http.get<string[]>(`${this.apiUrl}/me/playlist`, { headers: this.getAuthHeaders() }).toPromise();
+            this.playlist = Array.isArray(arr) ? arr.filter(s => typeof s === 'string') : [];
+        } catch { this.playlist = []; }
+    }
+    private async persistPlaylist() {
+        try { await this.http.put(`${this.apiUrl}/me/playlist`, this.playlist, { headers: this.getAuthHeaders() }).toPromise(); } catch { /* ignore */ }
     }
     getPlaylist(): string[] { return [...this.playlist]; }
     isInPlaylist(name: string): boolean { return this.playlist.includes(name); }
@@ -293,70 +323,71 @@ export class TimerService {
     }
 
     // --- Celebrations & milestones ---
-    private onMusicUnlocked() {
+    private async onMusicUnlocked() {
         try {
-            // Guard duplicate per-sound is naturally handled by the Set; trigger a modal for each new discovery
             this.celebrate.celebrateMusicUnlocked();
-            // Also check music exploration achievements (1 and 4)
+            // Also check music exploration achievements (1 and 4), server-backed
             const count = this.getDiscoveredSoundsCount();
-            const marks = this.loadCelebrationMarks();
-            if (count >= 1 && !marks.music_1) {
+            if (count >= 1 && !this.achievements['music_1']) {
                 this.celebrate.celebrateAchievement();
-                marks.music_1 = true;
-                this.saveCelebrationMarks(marks);
+                await this.achieve('music_1');
             }
-            if (count >= 4 && !marks.music_4) {
+            if (count >= 4 && !this.achievements['music_4']) {
                 this.celebrate.celebrateAchievement();
-                marks.music_4 = true;
-                this.saveCelebrationMarks(marks);
+                await this.achieve('music_4');
             }
         } catch { /* ignore */ }
     }
 
     private checkAndCelebrateStreakMilestones() {
         this.getStreak().subscribe({
-            next: (res: any) => {
+            next: async (res: any) => {
                 const cur = res?.currentStreak || 0;
-                const marks = this.loadCelebrationMarks();
                 const thresholds = [4, 7, 14];
                 for (const t of thresholds) {
-                    const key = `streak_${t}` as const;
-                    if (cur >= t && !marks[key]) {
+                    const key = `streak_${t}`;
+                    if (cur >= t && !this.achievements[key]) {
                         this.celebrate.celebrateAchievement();
-                        marks[key] = true;
+                        await this.achieve(key);
                     }
                 }
-                this.saveCelebrationMarks(marks);
             },
             error: () => { /* ignore */ }
         });
     }
 
-    private loadCelebrationMarks(): any {
+    // Achievements (server-backed)
+    private async fetchAchievements() {
         try {
-            const raw = localStorage.getItem('celebrations');
-            return raw ? JSON.parse(raw) : {};
-        } catch { return {}; }
+            const map = await this.http.get<Record<string, { seen: boolean; achieved_at: string }>>(`${this.apiUrl}/me/achievements`, { headers: this.getAuthHeaders() }).toPromise();
+            this.achievements = map || {};
+        } catch { this.achievements = {}; }
     }
-    private saveCelebrationMarks(m: any) {
-        try { localStorage.setItem('celebrations', JSON.stringify(m || {})); } catch { /* ignore */ }
+    private async achieve(key: string) {
+        try {
+            await this.http.post(`${this.apiUrl}/me/achievements/achieve`, { key }, { headers: this.getAuthHeaders() }).toPromise();
+            this.achievements[key] = { seen: false };
+        } catch { /* ignore */ }
     }
 
     // --- Unlocking logic ---
     private checkAndUnlockSounds(currentLevel: number, totalCompletedCycles: number) {
-        let unlockedAny = false;
-        Object.keys(this.unlockRules).forEach((id) => {
-            if (this.discoveredSounds.has(id)) return;
-            const rule = this.unlockRules[id];
-            const meetsLevel = typeof rule.minLevel === 'number' ? currentLevel >= (rule.minLevel as number) : true;
-            const meetsCycles = typeof rule.minCycles === 'number' ? totalCompletedCycles >= (rule.minCycles as number) : true;
-            if (meetsLevel && meetsCycles) {
-                this.discoveredSounds.add(id);
-                unlockedAny = true;
-                // Celebrate each new unlocked sound
-                this.onMusicUnlocked();
-            }
-        });
-        if (unlockedAny) this.persistDiscoveredSounds();
+        // Unlock logic now runs on the server during ciclo completion. This method is retained for compatibility.
+        // No client-side unlocking here.
+    }
+
+    private async fetchTimerConfig() {
+        try {
+            const cfg: any = await this.http.get(`${this.apiUrl}/me/timer-config`, { headers: this.getAuthHeaders() }).toPromise();
+            if (cfg) this.timerConfig = {
+                pomodoro: Number(cfg.pomodoro) || this.timerConfig.pomodoro,
+                shortBreak: Number(cfg.shortBreak) || this.timerConfig.shortBreak,
+                longBreak: Number(cfg.longBreak) || this.timerConfig.longBreak,
+                longBreakInterval: Number(cfg.longBreakInterval) || this.timerConfig.longBreakInterval,
+                alarmSound: this.timerConfig.alarmSound
+            };
+            // Reset totals respecting current type
+            this.resetForCurrentType();
+        } catch { /* ignore */ }
     }
 }

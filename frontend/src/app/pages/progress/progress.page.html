@@ -4,10 +4,7 @@
     <div class="flex items-center justify-between">
       <app-logo height="28"></app-logo>
       <div class="flex items-center gap-2">
-        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" (click)="openAchievements()" aria-label="Conquistas">
-          <ion-icon name="trophy-outline"></ion-icon>
-        </button>
-        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" aria-label="Configurações">
+        <button class="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-surface-border bg-surface-subtle text-text-primary" aria-label="Configurações" (click)="openSettings()">
           <ion-icon name="settings-outline"></ion-icon>
         </button>
       </div>
@@ -44,7 +41,7 @@
           </div>
           <div class="flex-1">
             <div class="text-xl font-semibold">Músicas e Sons</div>
-            <div class="text-text-secondary">{{ getMusicasEncontradas() }} de {{ alarmSounds.length }} Encontradas</div>
+            <div class="text-text-secondary">{{ getMusicasEncontradas() }} de {{ soundsTotal }} Encontradas</div>
             <div class="mt-2 h-3 rounded-full bg-surface-subtle">
               <div class="h-3 rounded-full bg-gradient-to-r from-brand-gradientStart to-brand-gradientEnd" [style.width.%]="musicPercent"></div>
             </div>

@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, of, firstValueFrom } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 export interface User {
     id: number;
@@ -17,7 +18,7 @@ export interface User {
     providedIn: 'root'
 })
 export class AuthService {
-    private apiUrl = 'http://localhost:3000/api'; // Corrigido para /api
+    private apiUrl = `${environment.apiBaseUrl}/api`;
     private currentUserSubject = new BehaviorSubject<User | null>(null);
     public currentUser$ = this.currentUserSubject.asObservable();
 
@@ -40,9 +41,12 @@ export class AuthService {
                 this.http.post<any>(`${this.apiUrl}/login`, { email, senha: password })
             );
 
-            if (response?.user && response?.token) {
+            if (response?.user) {
                 localStorage.setItem('focus_now_user', JSON.stringify(response.user));
-                localStorage.setItem('focus_now_token', response.token);
+                // Only persist token locally if not using cookie-based auth
+                if (!environment.useCookies && response?.token) {
+                    localStorage.setItem('focus_now_token', response.token);
+                }
                 this.currentUserSubject.next(response.user);
                 return true;
             }
@@ -64,7 +68,11 @@ export class AuthService {
         }
     }
 
-    logout(): void {
+    async logout(): Promise<void> {
+        try {
+            // Clear server cookie (if using cookie auth)
+            await firstValueFrom(this.http.post(`${this.apiUrl}/logout`, {}));
+        } catch { /* ignore */ }
         localStorage.removeItem('focus_now_user');
         localStorage.removeItem('focus_now_token');
         this.currentUserSubject.next(null);
@@ -79,6 +87,7 @@ export class AuthService {
     }
 
     getToken(): string | null {
+        if (environment.useCookies) return null; // not used
         return localStorage.getItem('focus_now_token');
     }
 

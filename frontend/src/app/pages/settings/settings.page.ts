@@ -20,9 +20,14 @@ export class SettingsPage implements OnInit {
     settings = {
         temaEscuro: false,
         modoAutomatico: true,
-        notificacoes: true,
         mutar: false
     };
+    // UI state for sound settings
+    alarmVolumePercent = 100; // 0..100
+    vibrateOnEnd = true;
+    autoplayOnFocus = false;
+    pauseOnBreaks = true;
+    preEndWarningSeconds = 5;
     timerConfig: { pomodoro: number; shortBreak: number; longBreak: number; longBreakInterval: number } = {
         pomodoro: 25,
         shortBreak: 5,
@@ -41,7 +46,13 @@ export class SettingsPage implements OnInit {
         // Carregar configurações salvas
         const savedSettings = localStorage.getItem('appSettings');
         if (savedSettings) {
-            this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
+            const parsed = JSON.parse(savedSettings);
+            this.settings = { ...this.settings, ...parsed };
+            if (typeof parsed.alarmVolume === 'number') this.alarmVolumePercent = Math.round(parsed.alarmVolume * 100);
+            if (typeof parsed.vibrateOnEnd === 'boolean') this.vibrateOnEnd = parsed.vibrateOnEnd;
+            if (typeof parsed.autoplayOnFocus === 'boolean') this.autoplayOnFocus = parsed.autoplayOnFocus;
+            if (typeof parsed.pauseOnBreaks === 'boolean') this.pauseOnBreaks = parsed.pauseOnBreaks;
+            if (typeof parsed.preEndWarningSeconds === 'number') this.preEndWarningSeconds = Math.max(0, Math.min(60, Math.floor(parsed.preEndWarningSeconds)));
         }
         // Load current timer config to show summary
         try {
@@ -60,7 +71,24 @@ export class SettingsPage implements OnInit {
     // Removed Personalizar button for now; keep hook if reintroduced later
 
     async saveSettings() {
-        localStorage.setItem('appSettings', JSON.stringify(this.settings));
+        // Merge with existing appSettings to preserve unrelated keys
+        const existing = localStorage.getItem('appSettings');
+        const parsed = existing ? JSON.parse(existing) : {};
+        const merged = {
+            ...parsed,
+            ...this.settings,
+            autoplayOnFocus: this.autoplayOnFocus,
+            pauseOnBreaks: this.pauseOnBreaks,
+            alarmVolume: this.alarmVolumePercent / 100,
+            vibrateOnEnd: this.vibrateOnEnd,
+            preEndWarningSeconds: this.preEndWarningSeconds
+        };
+        localStorage.setItem('appSettings', JSON.stringify(merged));
+        // Apply mute setting immediately in the running app
+        try { this.timerService.setMuted(this.settings.mutar); } catch {}
+        try { this.timerService.setAlarmVolume(this.alarmVolumePercent / 100); } catch {}
+        try { this.timerService.setVibrateOnEnd(this.vibrateOnEnd); } catch {}
+        try { this.timerService.setPreEndWarningSeconds(this.preEndWarningSeconds); } catch {}
         await this.presentToast('Configurações salvas!');
     }
 

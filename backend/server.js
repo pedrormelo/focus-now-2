@@ -3,12 +3,29 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+// Note: We don't require cookie-parser. We'll set cookies via res.cookie and parse incoming cookies manually.
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+
+// CORS: allow credentials and common dev origins (including Capacitor scheme)
+const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+app.use(cors({
+    origin: (origin, cb) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return cb(null, true);
+        // Always allow capacitor/electron style schemes
+        if (origin.startsWith('capacitor://') || origin.startsWith('ionic://') || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+            return cb(null, true);
+        }
+        if (allowedOrigins.length === 0) return cb(null, true);
+        if (allowedOrigins.includes(origin)) return cb(null, true);
+        return cb(null, false);
+    },
+    credentials: true
+}));
 
 // DB connection will be initialized after configuration and function definitions
 
@@ -20,16 +37,62 @@ const dbConfig = {
     database: process.env.DB_NAME || 'focusnow'
 };
 
-// Middleware de autenticação
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+// Helpers para cookies JWT
+const isProd = process.env.NODE_ENV === 'production';
+const jwtSecret = process.env.JWT_SECRET || 'focusnow_secret';
+const cookieName = process.env.AUTH_COOKIE_NAME || 'focusnow_token';
+let cookieSecure = (process.env.COOKIE_SECURE ? process.env.COOKIE_SECURE === 'true' : isProd);
+let cookieSameSite = (process.env.COOKIE_SAMESITE || (cookieSecure ? 'none' : 'lax')).toLowerCase();
+if (cookieSameSite === 'none' && !cookieSecure) {
+    console.warn('[AUTH] COOKIE_SAMESITE is "none" but COOKIE_SECURE is false. Adjusting SameSite to "lax" to satisfy browser requirements for non-HTTPS.');
+    cookieSameSite = 'lax';
+}
 
+function setAuthCookie(res, token) {
+    const options = {
+        httpOnly: true,
+        secure: cookieSecure,
+        sameSite: cookieSameSite,
+        maxAge: 24 * 60 * 60 * 1000, // 1 day
+        path: '/',
+    };
+    res.cookie(cookieName, token, options);
+}
+
+function clearAuthCookie(res) {
+    res.clearCookie(cookieName, { path: '/', httpOnly: true, secure: cookieSecure, sameSite: cookieSameSite });
+}
+
+function parseCookie(header) {
+    const out = {};
+    if (!header) return out;
+    const parts = header.split(';');
+    for (const p of parts) {
+        const idx = p.indexOf('=');
+        if (idx > -1) {
+            const k = p.slice(0, idx).trim();
+            const v = p.slice(idx + 1).trim();
+            out[k] = decodeURIComponent(v);
+        }
+    }
+    return out;
+}
+
+function getTokenFromRequest(req) {
+    const authHeader = req.headers['authorization'];
+    const bearer = authHeader && authHeader.split(' ')[1];
+    if (bearer) return bearer;
+    const cookies = parseCookie(req.headers['cookie']);
+    return cookies[cookieName];
+}
+
+// Middleware de autenticação (suporta Authorization: Bearer e cookie HttpOnly)
+const authenticateToken = (req, res, next) => {
+    const token = getTokenFromRequest(req);
     if (!token) {
         return res.status(401).json({ error: 'Token de acesso necessário' });
     }
-
-    jwt.verify(token, process.env.JWT_SECRET || 'focusnow_secret', (err, user) => {
+    jwt.verify(token, jwtSecret, (err, user) => {
         if (err) return res.status(403).json({ error: 'Token inválido' });
         req.user = user;
         next();
@@ -200,11 +263,13 @@ app.post('/api/register', async (req, res) => {
 
         const token = jwt.sign(
             { userId: result.insertId, email },
-            process.env.JWT_SECRET || 'focusnow_secret',
+            jwtSecret,
             { expiresIn: '24h' }
         );
 
-    res.json({ token, user: { id: result.insertId, nome, email, objetivo, nivel: 1, xp: 0 } });
+        // Seta cookie HttpOnly e também retorna token para compatibilidade
+        try { setAuthCookie(res, token); } catch (e) { /* ignore */ }
+        res.json({ token, user: { id: result.insertId, nome, email, objetivo, nivel: 1, xp: 0 } });
     } catch (error) {
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
@@ -227,10 +292,12 @@ app.post('/api/login', async (req, res) => {
 
         const token = jwt.sign(
             { userId: user.id, email: user.email },
-            process.env.JWT_SECRET || 'focusnow_secret',
+            jwtSecret,
             { expiresIn: '24h' }
         );
 
+        // Seta cookie HttpOnly e também retorna token para compatibilidade
+        try { setAuthCookie(res, token); } catch (e) { /* ignore */ }
         res.json({
             token,
             user: {
@@ -245,6 +312,12 @@ app.post('/api/login', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: 'Erro interno do servidor' });
     }
+});
+
+// Logout: limpa cookie
+app.post('/api/logout', (req, res) => {
+    clearAuthCookie(res);
+    res.json({ ok: true });
 });
 
 // Rotas do Timer e Progresso
@@ -616,6 +689,19 @@ app.get('/api/me/unlocks', ensureDBConnected, authenticateToken, async (req, res
         res.json(rows.map(r => r.sound_id));
     } catch (e) {
         res.status(500).json({ error: e?.message || 'Erro ao carregar desbloqueios' });
+    }
+});
+
+app.put('/api/me/unlocks', ensureDBConnected, authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const items = Array.isArray(req.body) ? req.body : (Array.isArray(req.body?.items) ? req.body.items : []);
+        if (!items.length) return res.json({ ok: true, inserted: 0 });
+        const values = items.map(id => [userId, id]);
+        await db.query(`INSERT IGNORE INTO user_unlocked_sounds (user_id, sound_id) VALUES ?`, [values]);
+        res.json({ ok: true, inserted: values.length });
+    } catch (e) {
+        res.status(500).json({ error: e?.message || 'Erro ao salvar desbloqueios' });
     }
 });
 

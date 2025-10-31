@@ -5,13 +5,11 @@ import { Router } from '@angular/router';
 import { LogoComponent } from '../../components/logo/logo.component';
 import { BottomNavComponent } from '../../components/bottom-nav/bottom-nav.component';
 import { TimerService } from '../../services/timer.service';
+import { AudioService } from '../../services/audio.service';
 import { AuthService } from '../../services/auth.service';
+import { MUSIC_CATALOG, Track } from '../../data/music-catalog';
 
-interface SoundItem {
-    title: string;
-    artist: string;
-    id: string; // unique identifier
-}
+type SoundItem = Track;
 
 @Component({
     selector: 'app-sounds',
@@ -24,17 +22,11 @@ export class SoundsPage implements OnInit, OnDestroy {
     playlist: SoundItem[] = [];
     available: SoundItem[] = [];
     unavailable: SoundItem[] = [];
-    catalog: SoundItem[] = [
-        { id: 'Sons da Floresta', title: 'Sons da Floresta', artist: 'Vários Artistas' },
-        { id: 'Sons de Chuva', title: 'Sons de Chuva', artist: 'Vários Artistas' },
-        { id: 'Quiet Resource - Evelyn', title: 'Quiet Resource', artist: 'Evelyn Stein' },
-        { id: 'Saudade - Gabriel Albuquerque', title: 'Saudade', artist: 'Gabriel Albuquerque' },
-        { id: 'Mix de Frases #1', title: 'Mix de Frases #1', artist: 'Vários Artistas' },
-        { id: 'Mix de Frases #2', title: 'Mix de Frases #2', artist: 'Vários Artistas' },
-    ];
+    catalog: SoundItem[] = MUSIC_CATALOG;
 
     private timerService = inject(TimerService);
     private auth = inject(AuthService);
+    private audio = inject(AudioService);
     private router = inject(Router);
     private toast = inject(ToastController);
         private currentPreviewId: string | null = null;
@@ -65,18 +57,20 @@ export class SoundsPage implements OnInit, OnDestroy {
     }
 
         async play(item: SoundItem) {
-            // Toggle preview state; integrate real audio later.
-            if (this.currentPreviewId === item.id) {
+            // Toggle preview of the selected item using AudioService
+            if (this.currentPreviewId === item.id || this.audio.isPreviewing(item.id)) {
                 await this.stopPreview(item);
                 return;
             }
             // Start new preview
             this.currentPreviewId = item.id;
             if (this.previewTimeout) { clearTimeout(this.previewTimeout); this.previewTimeout = null; }
+            try { await this.audio.playPreview(item.id); } catch { /* ignore */ }
             const t = await this.toast.create({ message: `Reproduzindo prévia: ${item.title}`, duration: 1000, color: 'dark', position: 'bottom' });
             await t.present();
             // Auto-stop preview after a few seconds
-            this.previewTimeout = setTimeout(() => {
+            this.previewTimeout = setTimeout(async () => {
+                await this.audio.stopPreview();
                 this.currentPreviewId = null;
                 this.previewTimeout = null;
             }, 5000);
@@ -84,6 +78,7 @@ export class SoundsPage implements OnInit, OnDestroy {
 
         private async stopPreview(item: SoundItem) {
             if (this.previewTimeout) { clearTimeout(this.previewTimeout); this.previewTimeout = null; }
+            try { await this.audio.stopPreview(); } catch { /* ignore */ }
             this.currentPreviewId = null;
             const t = await this.toast.create({ message: `Prévia pausada: ${item.title}`, duration: 800, color: 'medium', position: 'bottom' });
             await t.present();
@@ -105,7 +100,7 @@ export class SoundsPage implements OnInit, OnDestroy {
     }
 
     inPlaylist(id: string): boolean { return this.timerService.isInPlaylist(id); }
-        isPlaying(item: SoundItem): boolean { return this.currentPreviewId === item.id; }
+    isPlaying(item: SoundItem): boolean { return this.currentPreviewId === item.id || this.audio.isPreviewing(item.id); }
 
     scrollToAvailable() {
         const el = document.getElementById('available-section')

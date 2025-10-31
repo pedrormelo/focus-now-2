@@ -4,7 +4,12 @@
 
 export const environment = {
   production: false,
-  showCelebrationTester: true
+  showCelebrationTester: true,
+  // Backend base URL (no trailing slash)
+  // TIP: for device testing, set this to your laptop IP, e.g. 'http://192.168.0.42:3000'
+  apiBaseUrl: 'http://localhost:3000',
+  // For HTTP-only demo on LAN, disable cookies so we send Authorization header
+  useCookies: false
 };
 
 /*

@@ -93,6 +93,32 @@
           </div>
           <ion-range min="0" max="30" step="1" [(ngModel)]="preEndWarningSeconds" (ionChange)="saveSettings()"></ion-range>
         </div>
+        <div class="col-span-1 sm:col-span-2 rounded-2xl border border-surface-border bg-surface-subtle px-4 py-3">
+          <div class="mb-2 flex items-center justify-between">
+            <span class="text-sm">Modo de Reprodução</span>
+            <span class="text-xs text-text-secondary">{{ playbackMode === 'sequence' ? 'Sequencial' : (playbackMode === 'shuffle' ? 'Aleatório' : 'Repetir' ) }}</span>
+          </div>
+          <ion-segment [(ngModel)]="playbackMode" (ionChange)="saveSettings()">
+            <ion-segment-button value="sequence">Sequencial</ion-segment-button>
+            <ion-segment-button value="shuffle">Aleatório</ion-segment-button>
+            <ion-segment-button value="repeat-one">Repetir</ion-segment-button>
+          </ion-segment>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dev tools: only meaningful in non-production -->
+  <div class="mb-6 rounded-3xl border border-surface-border bg-surface/90 p-5" *ngIf="!environment.production">
+      <div class="mb-3 flex items-center gap-3 text-text-primary">
+        <ion-icon name="construct-outline"></ion-icon>
+        <h2 class="text-lg font-semibold">Desenvolvedor</h2>
+      </div>
+      <div class="grid gap-3">
+        <button class="inline-flex items-center gap-2 rounded-xl border border-surface-border bg-surface-subtle px-3 py-2 text-sm" (click)="devUnlockAll()">
+          <ion-icon name="unlock-outline"></ion-icon>
+          <span>Desbloquear Todos os Sons (Dev)</span>
+        </button>
+        <div class="text-xs text-text-secondary">Disponível apenas se o servidor estiver em modo de desenvolvimento.</div>
       </div>
     </div>
 

@@ -10,6 +10,9 @@ export class AudioService {
   private previewAudio: HTMLAudioElement | null = null;
   private muted = false;
   private volume = 1.0; // 0..1
+  private playlistIds: string[] = [];
+  private playlistIndex = 0;
+  private playbackMode: 'sequence' | 'shuffle' | 'repeat-one' = 'sequence';
 
   setMuted(m: boolean) {
     this.muted = !!m;
@@ -25,12 +28,15 @@ export class AudioService {
 
   async playPlaylist(ids: string[]) {
     if (!ids || !ids.length) { this.stop(); return; }
-    const id = ids[0]; // simple: play first track looped
-    await this.playBackgroundById(id, true);
+    this.playlistIds = ids.slice();
+    this.playlistIndex = 0;
+    const loopSingle = this.playlistIds.length === 1 && this.playbackMode === 'sequence';
+    await this.playBackgroundById(this.playlistIds[0], loopSingle || this.playbackMode === 'repeat-one');
+    if (!loopSingle && this.playbackMode !== 'repeat-one') this.attachEndedToAdvance();
   }
 
   async playBackgroundById(id: string, loop = true) {
-    try { this.stop(); } catch {}
+    try { this.stop(); } catch { }
     const src = this.srcFor(id);
     const audio = new Audio(src);
     audio.loop = loop;
@@ -43,14 +49,17 @@ export class AudioService {
     });
     await audio.play().catch(() => {/* ignore */});
     this.bgAudio = audio;
+    if (!loop && this.playbackMode !== 'repeat-one') this.attachEndedToAdvance();
   }
 
   stop() {
     if (this.bgAudio) {
-      try { this.bgAudio.pause(); } catch {}
-      try { this.bgAudio.src = ''; } catch {}
+      try { this.bgAudio.pause(); } catch { }
+      try { this.bgAudio.src = ''; } catch { }
       this.bgAudio = null;
     }
+    this.playlistIds = [];
+    this.playlistIndex = 0;
   }
 
   async playPreview(id: string) {
@@ -62,14 +71,14 @@ export class AudioService {
     audio.volume = this.volume;
     audio.addEventListener('ended', () => { this.stopPreview(); });
     audio.addEventListener('error', () => { this.stopPreview(); });
-    await audio.play().catch(() => {/* ignore */});
+    await audio.play().catch(() => {/* ignore */ });
     this.previewAudio = audio;
   }
 
   async stopPreview() {
     if (this.previewAudio) {
-      try { this.previewAudio.pause(); } catch {}
-      try { this.previewAudio.src = ''; } catch {}
+      try { this.previewAudio.pause(); } catch { }
+      try { this.previewAudio.src = ''; } catch { }
       this.previewAudio = null;
     }
   }
@@ -82,4 +91,39 @@ export class AudioService {
     const slug = slugify(id);
     return `assets/sounds/${slug}.mp3`;
   }
+
+  private attachEndedToAdvance() {
+    if (!this.bgAudio) return;
+    this.bgAudio.onended = () => {
+      if (!this.playlistIds.length) return;
+      if (this.playbackMode === 'repeat-one') {
+        // Shouldn't reach here because loop=true, but guard anyway
+        const id = this.playlistIds[this.playlistIndex] || this.playlistIds[0];
+        this.playBackgroundById(id, true).catch(() => {});
+        return;
+      }
+      if (this.playbackMode === 'shuffle') {
+        // pick a random different index
+        const n = this.playlistIds.length;
+        let next = this.playlistIndex;
+        if (n > 1) {
+          while (next === this.playlistIndex) next = Math.floor(Math.random() * n);
+        }
+        this.playlistIndex = next;
+      } else {
+        // sequence
+        this.playlistIndex = (this.playlistIndex + 1) % this.playlistIds.length;
+      }
+      const nextId = this.playlistIds[this.playlistIndex];
+      // chain next track
+      this.playBackgroundById(nextId, this.playlistIds.length === 1).catch(() => {/* ignore */ });
+    };
+  }
+
+  setPlaybackMode(mode: 'sequence' | 'shuffle' | 'repeat-one') {
+    this.playbackMode = mode;
+    // If repeating one while playing, force loop
+    if (this.bgAudio) this.bgAudio.loop = (mode === 'repeat-one') || (this.playlistIds.length <= 1 && mode === 'sequence');
+  }
+  getPlaybackMode() { return this.playbackMode; }
 }

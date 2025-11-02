@@ -364,7 +364,21 @@ app.post('/api/ciclos', ensureDBConnected, authenticateToken, async (req, res) =
                 { id: 'Quiet Resource - Evelyn', minLevel: 2 },
                 { id: 'Saudade - Gabriel Albuquerque', minLevel: 3 },
                 { id: 'Mix de Frases #1', minCycles: 4 },
-                { id: 'Mix de Frases #2', minLevel: 4 }
+                { id: 'Mix de Frases #2', minLevel: 4 },
+                // Extended catalog (must match frontend MUSIC_CATALOG IDs)
+                { id: 'Alvida Neve', minLevel: 1 },
+                { id: 'Correnteza Tranquila', minCycles: 2 },
+                { id: 'Focus Flow', minLevel: 2 },
+                { id: 'Focus Flow 2', minCycles: 3 },
+                { id: 'Focus Now', minLevel: 1 },
+                { id: 'Focus Now 2', minCycles: 3 },
+                { id: 'Mar Aberto', minLevel: 2 },
+                { id: 'More Five Minutes', minCycles: 2 },
+                { id: 'Quietude do Inverno', minLevel: 3 },
+                { id: 'Snowfall in Silence', minCycles: 4 },
+                { id: 'Snowfall Serenity', minLevel: 4 },
+                { id: 'Take Five Minutes', minCycles: 2 },
+                { id: 'Vale Sussurante', minLevel: 2 },
             ];
 
             // Total de ciclos completados do usuário (qualquer tipo, completado = 1)
@@ -768,3 +782,26 @@ app.post('/api/me/achievements/seen', ensureDBConnected, authenticateToken, asyn
         res.status(500).json({ error: e?.message || 'Erro ao marcar como visto' });
     }
 });
+
+// --- Dev utilities (non-production) ---
+if (process.env.NODE_ENV !== 'production') {
+    const CATALOG_IDS = [
+        'Sons da Floresta', 'Sons de Chuva', 'Quiet Resource - Evelyn', 'Saudade - Gabriel Albuquerque', 'Mix de Frases #1', 'Mix de Frases #2',
+        'Alvida Neve', 'Correnteza Tranquila', 'Focus Flow', 'Focus Flow 2', 'Focus Now', 'Focus Now 2', 'Mar Aberto', 'More Five Minutes', 'Quietude do Inverno', 'Snowfall in Silence', 'Snowfall Serenity', 'Take Five Minutes', 'Vale Sussurante'
+    ];
+
+    app.get('/api/dev/catalog-ids', (req, res) => {
+        res.json({ ids: CATALOG_IDS });
+    });
+
+    app.post('/api/dev/unlock-all', ensureDBConnected, authenticateToken, async (req, res) => {
+        try {
+            const userId = req.user.userId;
+            const values = CATALOG_IDS.map(id => [userId, id]);
+            await db.query(`INSERT IGNORE INTO user_unlocked_sounds (user_id, sound_id) VALUES ?`, [values]);
+            res.json({ ok: true, inserted: values.length });
+        } catch (e) {
+            res.status(500).json({ error: e?.message || 'Erro ao desbloquear (dev)' });
+        }
+    });
+}

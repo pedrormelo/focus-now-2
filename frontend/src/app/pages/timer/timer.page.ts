@@ -9,6 +9,7 @@ import { BottomNavComponent } from '../../components/bottom-nav/bottom-nav.compo
 import { CycleDotsComponent } from '../../components/cycle-dots/cycle-dots.component';
 import { TimerSettingsModalComponent } from '../../components/timer-settings-modal/timer-settings-modal.component';
 import { CelebrationService } from '../../services/celebration.service';
+import { SettingsService, AppSettings } from '../../services/settings.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -33,13 +34,15 @@ export class TimerPage implements OnInit {
   private router = inject(Router);
   private modalCtrl = inject(ModalController);
   private celebrate = inject(CelebrationService);
+  private settings = inject(SettingsService);
 
   // Dev-only helper flag for showing celebration test buttons
   isDev = !environment.production && !!(environment as any).showCelebrationTester;
 
   ngOnInit() {
-    this.loadSettings();
-    this.timerService.loadAppSettings();
+    const snap = this.settings.getSnapshot();
+    this.applySettings(snap);
+    this.settings.settings$.subscribe((s) => this.applySettings({ ...snap, ...s }));
   }
 
 
@@ -110,13 +113,7 @@ export class TimerPage implements OnInit {
     }
   }
 
-  private loadSettings() {
-    try {
-      const s = localStorage.getItem('appSettings');
-      if (s) {
-        const parsed = JSON.parse(s);
-        if (typeof parsed.modoAutomatico === 'boolean') this.autoMode = parsed.modoAutomatico;
-      }
-    } catch { /* ignore */ }
+  private applySettings(s: Required<AppSettings>) {
+    this.autoMode = s.modoAutomatico !== false;
   }
 }

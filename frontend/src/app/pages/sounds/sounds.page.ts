@@ -56,6 +56,16 @@ export class SoundsPage implements OnInit, OnDestroy {
         this.unavailable = this.catalog.filter(c => !discoveredNames.has(c.id));
     }
 
+    coverFor(id: string): string {
+        const slug = id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        return `assets/sounds/covers/${slug}.jpg`;
+    }
+
+    onCoverError(ev: Event) {
+        const el = ev?.target as HTMLImageElement | null;
+        if (el) el.style.display = 'none';
+    }
+
         async play(item: SoundItem) {
             // Toggle preview of the selected item using AudioService
             if (this.currentPreviewId === item.id || this.audio.isPreviewing(item.id)) {

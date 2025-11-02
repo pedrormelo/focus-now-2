@@ -6,6 +6,7 @@ import { CelebrationService } from './celebration.service';
 import { AudioService } from './audio.service';
 import { getUnlockRulesMap, getCatalogIds } from '../data/music-catalog';
 import { environment } from '../../environments/environment';
+import { SettingsService } from './settings.service';
 
 type TimerState = {
     currentTime: number;
@@ -51,11 +52,14 @@ export class TimerService {
     private auth = inject(AuthService);
     private celebrate = inject(CelebrationService);
     private audio = inject(AudioService);
+    private settings = inject(SettingsService);
     private userSub: any;
 
     constructor() {
-        // Load local app settings (mute, alarm volume, haptics)
-        this.loadAppSettings();
+        // React to settings changes centrally
+        const snap = this.settings.getSnapshot();
+        this.applySettingsSnapshot(snap);
+        this.settings.settings$.subscribe((s) => this.applySettingsSnapshot({ ...snap, ...s }));
         // Load server state for current user
         this.bootstrapFromServer();
         // React to user changes to load fresh server state
@@ -112,9 +116,13 @@ export class TimerService {
                 this.onComplete();
             }
         });
-    // Autoplay playlist when focus starts
-    const settings = this.getAppSettings();
+        // Autoplay playlist when focus starts
+        const settings = this.getAppSettings();
         if (this.timerType === 'pomodoro' && settings.autoplayOnFocus) {
+            try {
+                const snap = this.settings.getSnapshot();
+                this.audio.setPlaybackMode(snap.playbackMode || 'sequence');
+            } catch {}
             this.audio.setMuted(this.muted);
             this.audio.setVolume(this.getAlarmVolume?.() ?? 1);
             this.audio.playPlaylist(this.getPlaylist());
@@ -273,19 +281,19 @@ export class TimerService {
     get totalSeconds() { return this.state.value.totalSeconds; }
     get completedCycles() { return this.state.value.completedCycles; }
 
-    // Local settings
-    loadAppSettings() {
-        try {
-            const s = localStorage.getItem('appSettings');
-            if (s) {
-                const parsed = JSON.parse(s);
-                if (typeof parsed.modoAutomatico === 'boolean') this.autoMode = parsed.modoAutomatico;
-                if (typeof parsed.mutar === 'boolean') this.muted = parsed.mutar;
-                if (typeof parsed.vibrateOnEnd === 'boolean') this.vibrateOnEnd = parsed.vibrateOnEnd;
-                if (typeof parsed.alarmVolume === 'number') this.alarmVolume = Math.max(0, Math.min(1, parsed.alarmVolume));
-                if (typeof parsed.preEndWarningSeconds === 'number') this.preEndWarningSeconds = Math.max(0, Math.min(60, Math.floor(parsed.preEndWarningSeconds)));
-            }
-        } catch { /* ignore */ }
+    // Apply settings snapshot to internal state
+    private applySettingsSnapshot(s: { modoAutomatico?: boolean; mutar?: boolean; vibrateOnEnd?: boolean; alarmVolume?: number; preEndWarningSeconds?: number }) {
+        if (typeof s.modoAutomatico === 'boolean') this.autoMode = s.modoAutomatico;
+        if (typeof s.mutar === 'boolean') {
+            this.muted = s.mutar;
+            try { this.audio.setMuted(this.muted); } catch {}
+        }
+        if (typeof s.vibrateOnEnd === 'boolean') this.vibrateOnEnd = s.vibrateOnEnd;
+        if (typeof s.alarmVolume === 'number') {
+            this.alarmVolume = Math.max(0, Math.min(1, s.alarmVolume));
+            try { this.audio.setVolume(this.alarmVolume); } catch {}
+        }
+        if (typeof s.preEndWarningSeconds === 'number') this.preEndWarningSeconds = Math.max(0, Math.min(60, Math.floor(s.preEndWarningSeconds)));
     }
 
     // Read appSettings convenience (includes feature flags we may add gradually)
@@ -304,49 +312,23 @@ export class TimerService {
 
     // Mute handling for focus music previews/alarms
     setMuted(m: boolean) {
-        this.muted = !!m;
-        // Persist into the shared appSettings blob
-        try {
-            const s = localStorage.getItem('appSettings');
-            const parsed = s ? JSON.parse(s) : {};
-            parsed.mutar = this.muted;
-            localStorage.setItem('appSettings', JSON.stringify(parsed));
-        } catch { /* ignore */ }
-        try { this.audio.setMuted(this.muted); } catch {}
+        this.settings.setPartial({ mutar: !!m });
     }
     get isMuted() { return this.muted; }
 
     setAlarmVolume(v: number) {
         const vol = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : this.alarmVolume;
-        this.alarmVolume = vol;
-        try {
-            const s = localStorage.getItem('appSettings');
-            const parsed = s ? JSON.parse(s) : {};
-            parsed.alarmVolume = this.alarmVolume;
-            localStorage.setItem('appSettings', JSON.stringify(parsed));
-        } catch { /* ignore */ }
+        this.settings.setPartial({ alarmVolume: vol });
     }
     getAlarmVolume() { return this.alarmVolume; }
     setVibrateOnEnd(b: boolean) {
-        this.vibrateOnEnd = !!b;
-        try {
-            const s = localStorage.getItem('appSettings');
-            const parsed = s ? JSON.parse(s) : {};
-            parsed.vibrateOnEnd = this.vibrateOnEnd;
-            localStorage.setItem('appSettings', JSON.stringify(parsed));
-        } catch { /* ignore */ }
+        this.settings.setPartial({ vibrateOnEnd: !!b });
     }
     getVibrateOnEnd() { return this.vibrateOnEnd; }
 
     setPreEndWarningSeconds(sec: number) {
         const val = Number.isFinite(sec) ? Math.max(0, Math.min(60, Math.floor(sec))) : this.preEndWarningSeconds;
-        this.preEndWarningSeconds = val;
-        try {
-            const s = localStorage.getItem('appSettings');
-            const parsed = s ? JSON.parse(s) : {};
-            parsed.preEndWarningSeconds = this.preEndWarningSeconds;
-            localStorage.setItem('appSettings', JSON.stringify(parsed));
-        } catch { /* ignore */ }
+        this.settings.setPartial({ preEndWarningSeconds: val });
     }
     getPreEndWarningSeconds() { return this.preEndWarningSeconds; }
 
@@ -408,6 +390,14 @@ export class TimerService {
         try {
             const list = await this.http.get<string[]>(`${this.apiUrl}/me/unlocks`, { headers: this.getAuthHeaders() }).toPromise();
             (list || []).forEach(id => this.discoveredSounds.add(id));
+        } catch { /* ignore */ }
+    }
+    // Public helpers to refresh unlocks and trigger dev unlock-all
+    async reloadUnlocks() { this.discoveredSounds = new Set<string>(); await this.fetchUnlocks(); }
+    async devUnlockAll() {
+        if ((environment as any).production) return;
+        try {
+            await this.http.post(`${this.apiUrl}/dev/unlock-all`, {}, { headers: this.getAuthHeaders() }).toPromise();
         } catch { /* ignore */ }
     }
     getDiscoveredSounds(): string[] { return Array.from(this.discoveredSounds); }

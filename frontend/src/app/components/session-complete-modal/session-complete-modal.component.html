@@ -1,0 +1,19 @@
+<ion-content class="ion-padding">
+    <div class="sc-wrap">
+        <div class="sc-card" role="dialog" aria-modal="true">
+            <div class="icon-wrap">
+                <div class="icon-grad">
+                    <ion-icon [name]="phase === 'pomodoro' ? 'sparkles-outline' : 'time-outline'"
+                        class="icon"></ion-icon>
+                </div>
+            </div>
+            <div class="title">{{ title }}</div>
+            <div class="message">{{ message }}</div>
+            <div class="actions">
+                <button class="btn-pill" (click)="close()">OK</button>
+                <button *ngIf="!autoMode" class="btn-pill primary" (click)="startNextNow()">Iniciar próximo
+                    agora</button>
+            </div>
+        </div>
+    </div>
+</ion-content>

@@ -61,8 +61,7 @@ export class LoginPage {
     }
 
     recoverPassword() {
-        // Implementar recuperação de senha
-        this.presentToast('Funcionalidade em desenvolvimento');
+        this.router.navigate(['/forgot-password']);
     }
 
     async presentToast(message: string) {

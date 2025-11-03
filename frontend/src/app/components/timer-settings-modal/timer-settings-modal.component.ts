@@ -2,6 +2,7 @@ import { Component, Input, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { IonicModule, ModalController } from '@ionic/angular';
+import { SettingsService } from '../../services/settings.service';
 
 @Component({
     selector: 'app-timer-settings-modal',
@@ -69,8 +70,8 @@ import { IonicModule, ModalController } from '@ionic/angular';
 
       <div class="mt-5">
         <div class="mb-1 text-sm text-text-secondary">Som do Alarme</div>
-        <ion-select interface="popover" fill="solid" [(ngModel)]="timerConfig.alarmSound" class="pill-select w-full">
-          <ion-select-option *ngFor="let s of alarmSounds" [value]="s">{{ s }}</ion-select-option>
+        <ion-select interface="popover" fill="solid" [(ngModel)]="selectedAlarm" class="pill-select w-full">
+          <ion-select-option *ngFor="let opt of alarmOptions" [value]="opt.value">{{ opt.label }}</ion-select-option>
         </ion-select>
       </div>
 
@@ -96,29 +97,43 @@ import { IonicModule, ModalController } from '@ionic/angular';
 })
 export class TimerSettingsModalComponent implements OnInit {
     @Input() config?: {
-        pomodoro: number; shortBreak: number; longBreak: number; longBreakInterval: number; alarmSound?: string;
+        pomodoro: number; shortBreak: number; longBreak: number; longBreakInterval: number;
     };
 
     timerConfig = {
         pomodoro: 25,
         shortBreak: 5,
         longBreak: 15,
-        longBreakInterval: 4,
-        alarmSound: 'Alarme Padrão'
+        longBreakInterval: 4
     };
 
-    alarmSounds = ['Alarme Padrão', 'Sino', 'Digital', 'Natureza'];
+    // Bind to SettingsService alarmSound values
+    selectedAlarm: 'bell' | 'digital' | 'security' | 'beep' = 'bell';
+    alarmOptions = [
+      { value: 'bell' as const, label: 'Sino' },
+      { value: 'digital' as const, label: 'Digital' },
+      { value: 'security' as const, label: 'Alarme' },
+      { value: 'beep' as const, label: 'Beep (Sintético)' }
+    ];
 
   private modalCtrl = inject(ModalController);
+  private settings = inject(SettingsService);
 
     ngOnInit() {
         if (this.config) {
             this.timerConfig = { ...this.timerConfig, ...this.config };
         }
+    // Initialize alarm selection from app settings
+    try {
+      const snap = this.settings.getSnapshot();
+      this.selectedAlarm = snap.alarmSound || 'bell';
+    } catch {}
     }
 
     close() {
-        this.modalCtrl.dismiss(this.timerConfig);
+    // Persist alarm selection into global settings
+    try { this.settings.setPartial({ alarmSound: this.selectedAlarm }); } catch {}
+    this.modalCtrl.dismiss(this.timerConfig);
     }
 
     // Limits for each numeric field

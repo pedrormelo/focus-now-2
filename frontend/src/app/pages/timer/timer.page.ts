@@ -8,8 +8,11 @@ import { LogoComponent } from '../../components/logo/logo.component';
 import { BottomNavComponent } from '../../components/bottom-nav/bottom-nav.component';
 import { CycleDotsComponent } from '../../components/cycle-dots/cycle-dots.component';
 import { TimerSettingsModalComponent } from '../../components/timer-settings-modal/timer-settings-modal.component';
+import { SessionCompleteModalComponent } from '../../components/session-complete-modal/session-complete-modal.component';
 import { CelebrationService } from '../../services/celebration.service';
 import { SettingsService, AppSettings } from '../../services/settings.service';
+import { AudioService } from '../../services/audio.service';
+import { MUSIC_CATALOG } from '../../data/music-catalog';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -20,7 +23,7 @@ import { environment } from '../../../environments/environment';
   imports: [CommonModule, FormsModule, IonicModule, LogoComponent, BottomNavComponent, CycleDotsComponent]
 })
 export class TimerPage implements OnInit {
-  trackTitle: string = 'Quiet Resource - Evelyn';
+  trackTitle: string = '—';
   get completedCycles() { return this.timerService.completedCycles; }
   // Auto mode and long-break tracking
   autoMode = true;
@@ -35,6 +38,7 @@ export class TimerPage implements OnInit {
   private modalCtrl = inject(ModalController);
   private celebrate = inject(CelebrationService);
   private settings = inject(SettingsService);
+  private audio = inject(AudioService);
 
   // Dev-only helper flag for showing celebration test buttons
   isDev = !environment.production && !!(environment as any).showCelebrationTester;
@@ -43,6 +47,24 @@ export class TimerPage implements OnInit {
     const snap = this.settings.getSnapshot();
     this.applySettings(snap);
     this.settings.settings$.subscribe((s) => this.applySettings({ ...snap, ...s }));
+    // Reflect current background track in UI
+    this.audio.currentTrack$.subscribe((id) => {
+      const t = MUSIC_CATALOG.find(x => x.id === id);
+      this.trackTitle = t ? `${t.title} - ${t.artist}` : (id || '—');
+    });
+    // Show a completion modal when a session completes (optional)
+    this.timerService.completed$.subscribe(async (phase) => {
+      const show = this.settings.getSnapshot().showCompletionModal;
+      if (!show) return;
+      // Wait for any celebration modals to finish to avoid overlapping UX
+      try { await (this.celebrate as any).whenIdle?.({ timeoutMs: 5000 }); } catch {}
+      const modal = await this.modalCtrl.create({
+        component: SessionCompleteModalComponent,
+        componentProps: { phase },
+        cssClass: 'session-complete-modal'
+      });
+      await modal.present();
+    });
   }
 
 
@@ -86,12 +108,30 @@ export class TimerPage implements OnInit {
   get currentTime(): number { return this.timerService.currentTime; }
   get isRunning(): boolean { return this.timerService.isRunning; }
   get isMuted(): boolean { return this.timerService.isMuted; }
+  get isMusicPlaying(): boolean { return this.audio.isBackgroundPlaying(); }
 
   goHome() { this.router.navigate(['/home']); }
   goProgress() { this.router.navigate(['/progress']); }
   openSettings() { this.router.navigate(['/settings']); }
   openSounds() { this.router.navigate(['/sounds']); }
   toggleMute() { this.timerService.setMuted(!this.isMuted); }
+  toggleMusic() {
+    if (this.audio.isBackgroundPlaying()) {
+      this.audio.pauseBackground();
+      return;
+    }
+    if (this.audio.isBackgroundPaused()) {
+      this.audio.resumeBackground();
+      return;
+    }
+    // If nothing has started yet, kick off playlist using current settings
+    const snap = this.settings.getSnapshot();
+    this.audio.setPlaybackMode(snap.playbackMode || 'sequence');
+    this.audio.setMuted(!!snap.mutar);
+    this.audio.setVolume(snap.alarmVolume ?? 1);
+    const playlist = this.timerService.getPlaylist();
+    if (playlist && playlist.length) this.audio.playPlaylist(playlist);
+  }
 
   // --- Dev celebration testers ---
   testAchievement() { if (this.isDev) this.celebrate.celebrateAchievement(); }

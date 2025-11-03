@@ -11,10 +11,6 @@ export interface Track {
 export const MUSIC_CATALOG: Track[] = [
     { id: 'Sons da Floresta', title: 'Sons da Floresta', artist: 'Vários Artistas', unlock: { minLevel: 1 } },
     { id: 'Sons de Chuva', title: 'Sons de Chuva', artist: 'Vários Artistas', unlock: { minCycles: 2 } },
-    { id: 'Quiet Resource - Evelyn', title: 'Quiet Resource', artist: 'Evelyn Stein', unlock: { minLevel: 2 } },
-    { id: 'Saudade - Gabriel Albuquerque', title: 'Saudade', artist: 'Gabriel Albuquerque', unlock: { minLevel: 3 } },
-    { id: 'Mix de Frases #1', title: 'Mix de Frases #1', artist: 'Vários Artistas', unlock: { minCycles: 4 } },
-    { id: 'Mix de Frases #2', title: 'Mix de Frases #2', artist: 'Vários Artistas', unlock: { minLevel: 4 } },
     // Added assets present in the repository (match filenames in assets/sounds/*.mp3)
     { id: 'Alvida Neve', title: 'Alvida Neve', artist: 'Vários Artistas', unlock: { minLevel: 1 } },
     { id: 'Correnteza Tranquila', title: 'Correnteza Tranquila', artist: 'Vários Artistas', unlock: { minCycles: 2 } },
@@ -29,6 +25,7 @@ export const MUSIC_CATALOG: Track[] = [
     { id: 'Snowfall Serenity', title: 'Snowfall Serenity', artist: 'Vários Artistas', unlock: { minLevel: 4 } },
     { id: 'Take Five Minutes', title: 'Take Five Minutes', artist: 'Vários Artistas', unlock: { minCycles: 2 } },
     { id: 'Vale Sussurante', title: 'Vale Sussurante', artist: 'Vários Artistas', unlock: { minLevel: 2 } },
+    { id: 'Vale Sussurante 2', title: 'Vale Sussurante 2', artist: 'Vários Artistas', unlock: { minLevel: 6 } },
 ];
 
 export function getUnlockRulesMap(): Record<string, { minLevel?: number; minCycles?: number }> {

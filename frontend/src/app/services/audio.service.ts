@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 
 function slugify(id: string): string {
   return id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -13,6 +14,8 @@ export class AudioService {
   private playlistIds: string[] = [];
   private playlistIndex = 0;
   private playbackMode: 'sequence' | 'shuffle' | 'repeat-one' = 'sequence';
+  private currentTrackIdSubject = new BehaviorSubject<string | null>(null);
+  currentTrack$ = this.currentTrackIdSubject.asObservable();
 
   setMuted(m: boolean) {
     this.muted = !!m;
@@ -50,6 +53,7 @@ export class AudioService {
     await audio.play().catch(() => {/* ignore */});
     this.bgAudio = audio;
     if (!loop && this.playbackMode !== 'repeat-one') this.attachEndedToAdvance();
+    this.currentTrackIdSubject.next(id);
   }
 
   stop() {
@@ -60,6 +64,7 @@ export class AudioService {
     }
     this.playlistIds = [];
     this.playlistIndex = 0;
+    this.currentTrackIdSubject.next(null);
   }
 
   async playPreview(id: string) {
@@ -126,4 +131,18 @@ export class AudioService {
     if (this.bgAudio) this.bgAudio.loop = (mode === 'repeat-one') || (this.playlistIds.length <= 1 && mode === 'sequence');
   }
   getPlaybackMode() { return this.playbackMode; }
+
+  pauseBackground() {
+    if (this.bgAudio) {
+      try { this.bgAudio.pause(); } catch {}
+    }
+  }
+  resumeBackground() {
+    if (this.bgAudio) {
+      try { this.bgAudio.play().catch(() => {}); } catch {}
+    }
+  }
+  isBackgroundPlaying(): boolean { return !!this.bgAudio && !this.bgAudio.paused; }
+  isBackgroundPaused(): boolean { return !!this.bgAudio && this.bgAudio.paused; }
+  getCurrentTrackId(): string | null { return this.currentTrackIdSubject.value; }
 }

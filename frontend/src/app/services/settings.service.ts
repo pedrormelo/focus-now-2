@@ -7,10 +7,13 @@ export interface AppSettings {
   mutar?: boolean;
   vibrateOnEnd?: boolean;
   alarmVolume?: number; // 0..1
+  alarmSound?: 'bell' | 'digital' | 'security' | 'beep';
   autoplayOnFocus?: boolean;
   pauseOnBreaks?: boolean;
   preEndWarningSeconds?: number; // 0..60
   playbackMode?: 'sequence' | 'shuffle' | 'repeat-one';
+  pauseMusicOnTimerPause?: boolean;
+  showCompletionModal?: boolean;
 }
 
 const STORAGE_KEY = 'appSettings';
@@ -26,10 +29,13 @@ export class SettingsService {
     mutar: false,
     vibrateOnEnd: true,
     alarmVolume: 1,
+    alarmSound: 'bell',
     autoplayOnFocus: false,
     pauseOnBreaks: true,
     preEndWarningSeconds: 5,
     playbackMode: 'sequence',
+    pauseMusicOnTimerPause: true,
+    showCompletionModal: true,
   };
 
   private subject = new BehaviorSubject<AppSettings>(this.loadFromStorage());
@@ -66,10 +72,13 @@ export class SettingsService {
       mutar: !!s.mutar,
       vibrateOnEnd: s.vibrateOnEnd !== false,
       alarmVolume: clamp01(typeof s.alarmVolume === 'number' ? s.alarmVolume : this.defaults.alarmVolume),
+      alarmSound: (s.alarmSound === 'digital' || s.alarmSound === 'security' || s.alarmSound === 'beep') ? s.alarmSound : 'bell',
       autoplayOnFocus: !!s.autoplayOnFocus,
       pauseOnBreaks: s.pauseOnBreaks !== false,
       preEndWarningSeconds: clampInt(typeof s.preEndWarningSeconds === 'number' ? s.preEndWarningSeconds : this.defaults.preEndWarningSeconds, 0, 60),
       playbackMode: (s.playbackMode === 'shuffle' || s.playbackMode === 'repeat-one') ? s.playbackMode : 'sequence',
+      pauseMusicOnTimerPause: s.pauseMusicOnTimerPause !== false,
+      showCompletionModal: s.showCompletionModal !== false,
     };
   }
 }

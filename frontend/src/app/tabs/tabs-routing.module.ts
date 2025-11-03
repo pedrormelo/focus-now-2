@@ -1,10 +1,12 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
+import { AuthGuard } from '../guards/auth.guard';
 import { TabsPage } from './tabs.page';
 
 const routes: Routes = [
   {
     path: '',
+    canMatch: [AuthGuard],
     component: TabsPage,
     children: [
       {

@@ -29,6 +29,23 @@ app.use(cors({
 
 // DB connection will be initialized after configuration and function definitions
 
+// Email setup (optional). Configure via env to enable real emails.
+// Required envs for SMTP: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM
+// For link building, set APP_BASE_URL (e.g., http://192.168.0.42:4200)
+let mailer = null;
+try {
+    if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS) {
+        mailer = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT, 10) || 587,
+            secure: (process.env.SMTP_SECURE === 'true') || false,
+            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        });
+    }
+} catch (e) {
+    console.warn('[MAIL] Failed to initialize mailer:', e?.message);
+}
+
 // Configuração do Banco
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
@@ -489,20 +506,40 @@ app.post('/api/forgot-password', async (req, res) => {
         const { email } = req.body;
         const [users] = await db.execute('SELECT id FROM usuarios WHERE email = ?', [email]);
 
-        if (users.length === 0) {
-            return res.status(404).json({ error: 'Usuário não encontrado' });
+        let token = null;
+        if (users.length > 0) {
+            const userId = users[0].id;
+            token = jwt.sign(
+                { userId, type: 'password_reset' },
+                process.env.JWT_SECRET || 'focusnow_secret',
+                { expiresIn: '1h' }
+            );
         }
 
-        const userId = users[0].id;
-        const token = jwt.sign(
-            { userId, type: 'password_reset' },
-            process.env.JWT_SECRET || 'focusnow_secret',
-            { expiresIn: '1h' }
-        );
+        // Build reset link
+        const appBase = process.env.APP_BASE_URL || 'http://localhost:4200';
+    const link = token ? `${appBase.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(token)}` : null;
 
-        // Em um projeto real, você enviaria um e-mail com o link de recuperação
-        // Para o MVP, vamos retornar o token
-        res.json({ message: 'Token de recuperação gerado', token });
+        // Send email if SMTP configured; always log/reset token for dev convenience
+    if (mailer && token) {
+            try {
+                await mailer.sendMail({
+                    from: process.env.MAIL_FROM || 'no-reply@focusnow.local',
+                    to: email,
+                    subject: 'Recuperação de senha - FocusNow',
+                    html: `<p>Você solicitou a recuperação de senha.</p>
+                           <p>Clique no link abaixo para redefinir a sua senha (expira em 1h):</p>
+                           <p><a href="${link}">${link}</a></p>
+                           <p>Se você não solicitou, ignore este e-mail.</p>`
+                });
+            } catch (e) {
+                console.warn('[MAIL] Send failed:', e?.message);
+            }
+        }
+    console.log('[PASSWORD RESET]', { email, link });
+
+        // Respond success; include token for dev/test
+    res.json({ message: 'Se o email existir, enviamos um link para recuperar a senha.', token });
 
     } catch (error) {
         res.status(500).json({ error: 'Erro ao processar a solicitação' });
@@ -802,6 +839,24 @@ if (process.env.NODE_ENV !== 'production') {
             res.json({ ok: true, inserted: values.length });
         } catch (e) {
             res.status(500).json({ error: e?.message || 'Erro ao desbloquear (dev)' });
+        }
+    });
+
+    // Reset all user data to a fresh state (dev only)
+    app.post('/api/dev/reset-user', ensureDBConnected, authenticateToken, async (req, res) => {
+        try {
+            const userId = req.user.userId;
+            // Remove dependent data first due to foreign keys
+            await db.execute(`DELETE FROM ciclos_pomodoro WHERE usuario_id = ?`, [userId]);
+            await db.execute(`DELETE FROM user_playlists WHERE user_id = ?`, [userId]);
+            await db.execute(`DELETE FROM user_unlocked_sounds WHERE user_id = ?`, [userId]);
+            await db.execute(`DELETE FROM user_achievements WHERE user_id = ?`, [userId]);
+            await db.execute(`DELETE FROM configuracoes WHERE usuario_id = ?`, [userId]);
+            await db.execute(`UPDATE usuarios SET nivel = 1, xp = 0 WHERE id = ?`, [userId]);
+            res.json({ ok: true });
+        } catch (e) {
+            console.error('Erro ao resetar usuário (dev):', e);
+            res.status(500).json({ error: e?.message || 'Erro ao resetar (dev)' });
         }
     });
 }

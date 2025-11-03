@@ -31,6 +31,16 @@ export class AuthService {
     private loadStoredUser(): void {
         const storedUser = localStorage.getItem('focus_now_user');
         if (storedUser) {
+            // If we're not using cookies, require a token to trust the stored user
+            if (!environment.useCookies) {
+                const token = localStorage.getItem('focus_now_token');
+                if (!token) {
+                    // Invalidate stale user without token (prevents 403 spam on /me endpoints)
+                    localStorage.removeItem('focus_now_user');
+                    this.currentUserSubject.next(null);
+                    return;
+                }
+            }
             this.currentUserSubject.next(JSON.parse(storedUser));
         }
     }
@@ -79,7 +89,13 @@ export class AuthService {
     }
 
     isAuthenticated(): boolean {
-        return !!this.currentUserSubject.value;
+        const hasUser = !!this.currentUserSubject.value;
+        if (!hasUser) return false;
+        // When not using cookies, also require a token present
+        if (!environment.useCookies) {
+            return !!localStorage.getItem('focus_now_token');
+        }
+        return true;
     }
 
     getCurrentUser(): User | null {
@@ -99,5 +115,24 @@ export class AuthService {
         try {
             localStorage.setItem('focus_now_user', JSON.stringify(updated));
         } catch { /* ignore */ }
+    }
+
+    // --- Password recovery ---
+    async requestPasswordReset(email: string): Promise<{ token?: string } | null> {
+        try {
+            const resp: any = await firstValueFrom(this.http.post(`${this.apiUrl}/forgot-password`, { email }));
+            return { token: resp?.token };
+        } catch {
+            return null;
+        }
+    }
+
+    async resetPassword(token: string, novaSenha: string): Promise<boolean> {
+        try {
+            await firstValueFrom(this.http.post(`${this.apiUrl}/reset-password`, { token, novaSenha }));
+            return true;
+        } catch {
+            return false;
+        }
     }
 }

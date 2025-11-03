@@ -23,6 +23,8 @@ describe('TimerPage', () => {
             timerType: 'pomodoro',
             isRunning: false,
             isMuted: false,
+            // streams expected by component
+            completed$: of('pomodoro'),
             // methods used
             start: () => {},
             pause: () => {},

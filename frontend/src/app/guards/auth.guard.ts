@@ -1,22 +1,25 @@
 import { Injectable, inject } from '@angular/core';
-import { CanLoad, Router } from '@angular/router';
+import { CanLoad, CanMatch, Route, UrlSegment, Router, UrlTree } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class AuthGuard implements CanLoad {
+export class AuthGuard implements CanLoad, CanMatch {
 
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  canLoad(): boolean {
-    if (this.authService.isAuthenticated()) {
-      return true;
-    }
+  canLoad(): boolean | UrlTree {
+    return this.check();
+  }
 
-    // Redirect to login page
-    this.router.navigate(['/login']);
-    return false;
+  canMatch(route: Route, segments: UrlSegment[]): boolean | UrlTree {
+    return this.check();
+  }
+
+  private check(): boolean | UrlTree {
+    if (this.authService.isAuthenticated()) return true;
+    return this.router.createUrlTree(['/login']);
   }
 }

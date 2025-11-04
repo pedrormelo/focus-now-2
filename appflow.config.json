@@ -1,8 +1,12 @@
 {
     "root": "frontend",
     "plugins": [],
+    "environments": [],
+    "variables": {},
     "capacitor": {
-        "plugins": []
+        "plugins": [],
+        "android": {},
+        "ios": {}
     },
     "cordova": {
         "plugins": []

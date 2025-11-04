@@ -1,6 +1,6 @@
 {
   "app_id": "e5d8b214",
-  "root": "frontend",
+  "root": ".",
   "type": "angular",
   "integrations": {
     "capacitor": {}

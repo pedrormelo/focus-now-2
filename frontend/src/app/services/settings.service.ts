@@ -24,7 +24,7 @@ function clampInt(n: number, min: number, max: number) { return Math.max(min, Ma
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
   private readonly defaults: Required<AppSettings> = {
-    temaEscuro: false,
+    temaEscuro: true,
     modoAutomatico: true,
     mutar: false,
     vibrateOnEnd: true,

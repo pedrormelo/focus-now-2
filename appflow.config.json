@@ -1,4 +1,6 @@
 {
-  "root": "frontend",
-  "plugins": []
+    "root": "frontend",
+    "plugins": {},
+    "capacitor": {},
+    "cordova": {}
 }

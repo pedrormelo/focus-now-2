@@ -1,20 +1,20 @@
 {
-    "app_id": "e5d8b214",
-    "root": "frontend",
-    "type": "angular",
-    "integrations": {
-        "capacitor": {}
+  "app_id": "e5d8b214",
+  "root": "frontend",
+  "type": "angular",
+  "integrations": {
+    "capacitor": {}
+  },
+  "environments": {},
+  "variables": {},
+  "build": {
+    "android": {
+      "buildStack": "android-2025.06",
+      "package_name": "com.focusnow.app",
+      "cordova_version": "11.0.0"
     },
-    "environments": {},
-    "variables": {},
-    "build": {
-        "android": {
-            "buildStack": "android-2025.06",
-            "package_name": "com.focusnow.app",
-            "cordova_version": "11.0.0"
-        },
-        "ios": {
-            "buildStack": "macos-2025.06"
-        }
+    "ios": {
+      "buildStack": "macos-2025.06"
     }
+  }
 }

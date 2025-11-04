@@ -1,7 +1,8 @@
 const config = {
     appId: 'com.focusnow.app',
     appName: 'FocusNow',
-    webDir: 'www',
+    // Point Capacitor's webDir to the frontend build output
+    webDir: 'frontend/www',
     server: {
         androidScheme: 'https'
     }

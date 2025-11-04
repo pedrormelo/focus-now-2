@@ -1,20 +1,14 @@
 {
-  "app_id": "e5d8b214",
-  "root": ".",
-  "type": "angular",
-  "integrations": {
-    "capacitor": {}
-  },
+  "root": "frontend",
+  "plugins": {},
   "environments": {},
   "variables": {},
-  "build": {
-    "android": {
-      "buildStack": "android-2025.06",
-      "package_name": "com.focusnow.app",
-      "cordova_version": "11.0.0"
-    },
-    "ios": {
-      "buildStack": "macos-2025.06"
-    }
+  "capacitor": {
+    "plugins": {},
+    "android": {},
+    "ios": {}
+  },
+  "cordova": {
+    "plugins": {}
   }
 }

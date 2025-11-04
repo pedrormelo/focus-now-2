@@ -1,14 +1,16 @@
 {
+    "app_id": "edec1785",
     "root": "frontend",
-    "plugins": [],
-    "environments": [],
-    "variables": {},
-    "capacitor": {
-        "plugins": [],
-        "android": {},
-        "ios": {}
+    "type": "angular",
+    "integrations": {
+        "capacitor": {}
     },
-    "cordova": {
-        "plugins": []
+    "build": {
+        "android": {
+            "buildStack": "android-2025.06"
+        },
+        "ios": {
+            "buildStack": "macos-2025.06"
+        }
     }
 }

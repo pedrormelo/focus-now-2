@@ -30,20 +30,82 @@ app.use(cors({
 // DB connection will be initialized after configuration and function definitions
 
 // Email setup (optional). Configure via env to enable real emails.
-// Required envs for SMTP: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM
+// Preferred (Gmail with App Password): set GMAIL_USER and GMAIL_APP_PASSWORD.
+// Generic SMTP: set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE
 // For link building, set APP_BASE_URL (e.g., http://192.168.0.42:4200)
 let mailer = null;
+let gmailAltTransport = null; // optional 587 STARTTLS fallback
+let fromAddress = process.env.MAIL_FROM || undefined;
+const mailDebug = (process.env.MAIL_DEBUG === 'true');
 try {
-    if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+        const gmailCommon = {
+            host: 'smtp.gmail.com',
+            auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
+            logger: mailDebug,
+            debug: mailDebug
+        };
+        // Primary: implicit TLS 465
+        mailer = nodemailer.createTransport({
+            ...gmailCommon,
+            port: 465,
+            secure: true
+        });
+        // Secondary: STARTTLS 587 (used on fallback if 465 is blocked)
+        gmailAltTransport = nodemailer.createTransport({
+            ...gmailCommon,
+            port: 587,
+            secure: false,
+            requireTLS: true
+        });
+        fromAddress = fromAddress || `FocusNow <${process.env.GMAIL_USER}>`;
+    } else if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS) {
         mailer = nodemailer.createTransport({
             host: process.env.SMTP_HOST,
             port: parseInt(process.env.SMTP_PORT, 10) || 587,
             secure: (process.env.SMTP_SECURE === 'true') || false,
-            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+            logger: mailDebug,
+            debug: mailDebug
         });
+        if (!fromAddress) fromAddress = `FocusNow <${process.env.SMTP_USER}>`;
     }
 } catch (e) {
     console.warn('[MAIL] Failed to initialize mailer:', e?.message);
+}
+
+// Warn if using default JWT secret in production
+if ((process.env.NODE_ENV === 'production') && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'focusnow_secret')) {
+    console.warn('[SECURITY] Using default JWT secret in production! Set JWT_SECRET to a strong random value.');
+}
+
+// Simple in-memory throttle for forgot-password to avoid email abuse
+const lastForgotByEmail = new Map(); // email -> timestamp ms
+const FORGOT_COOLDOWN_MS = 2 * 60 * 1000; // 2 minutes
+
+// Send mail with optional Gmail fallback from 465 -> 587 when networks block 465
+async function sendMailSafe(options) {
+    if (!mailer) return false;
+    try {
+        await mailer.sendMail(options);
+        return true;
+    } catch (e) {
+        const msg = e && (e.code || e.message || e.toString());
+        console.warn('[MAIL] Primary send failed:', msg);
+        const isNetErr = /ECONNRESET|ETIMEDOUT|ECONNECTION/i.test(String(msg || ''));
+        if (gmailAltTransport && isNetErr) {
+            try {
+                console.warn('[MAIL] Retrying with Gmail STARTTLS (587)...');
+                await gmailAltTransport.sendMail(options);
+                // Promote alt transport if it succeeds, to avoid repeated failures
+                mailer = gmailAltTransport;
+                return true;
+            } catch (e2) {
+                console.warn('[MAIL] Fallback send failed:', e2?.code || e2?.message || e2);
+            }
+        }
+        return false;
+    }
 }
 
 // Configuração do Banco
@@ -504,6 +566,12 @@ app.get('/api/estatisticas', ensureDBConnected, authenticateToken, async (req, r
 app.post('/api/forgot-password', async (req, res) => {
     try {
         const { email } = req.body;
+        const now = Date.now();
+        const last = email ? lastForgotByEmail.get(email) : null;
+        if (last && (now - last) < FORGOT_COOLDOWN_MS) {
+            // Neutral response to avoid enumeration and spamming
+            return res.json({ message: 'Se o email existir, enviamos um link para recuperar a senha.' });
+        }
         const [users] = await db.execute('SELECT id FROM usuarios WHERE email = ?', [email]);
 
         let token = null;
@@ -511,7 +579,7 @@ app.post('/api/forgot-password', async (req, res) => {
             const userId = users[0].id;
             token = jwt.sign(
                 { userId, type: 'password_reset' },
-                process.env.JWT_SECRET || 'focusnow_secret',
+                jwtSecret,
                 { expiresIn: '1h' }
             );
         }
@@ -521,22 +589,23 @@ app.post('/api/forgot-password', async (req, res) => {
     const link = token ? `${appBase.replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(token)}` : null;
 
         // Send email if SMTP configured; always log/reset token for dev convenience
-    if (mailer && token) {
-            try {
-                await mailer.sendMail({
-                    from: process.env.MAIL_FROM || 'no-reply@focusnow.local',
-                    to: email,
-                    subject: 'Recuperação de senha - FocusNow',
-                    html: `<p>Você solicitou a recuperação de senha.</p>
-                           <p>Clique no link abaixo para redefinir a sua senha (expira em 1h):</p>
-                           <p><a href="${link}">${link}</a></p>
-                           <p>Se você não solicitou, ignore este e-mail.</p>`
-                });
-            } catch (e) {
-                console.warn('[MAIL] Send failed:', e?.message);
+        if (mailer && token) {
+            const ok = await sendMailSafe({
+                from: fromAddress || process.env.MAIL_FROM || 'no-reply@focusnow.local',
+                to: email,
+                subject: 'Recuperação de senha - FocusNow',
+                html: `<p>Você solicitou a recuperação de senha.</p>
+                       <p>Clique no link abaixo para redefinir a sua senha (expira em 1h):</p>
+                       <p><a href="${link}">${link}</a></p>
+                       <p>Se você não solicitou, ignore este e-mail.</p>`
+            });
+            if (!ok) {
+                console.warn('[MAIL] Send failed: email not dispatched');
             }
         }
     console.log('[PASSWORD RESET]', { email, link });
+
+        if (email) lastForgotByEmail.set(email, now);
 
         // Respond success; include token for dev/test
     res.json({ message: 'Se o email existir, enviamos um link para recuperar a senha.', token });
@@ -555,7 +624,17 @@ app.post('/api/reset-password', async (req, res) => {
             return res.status(400).json({ error: 'Token e nova senha são obrigatórios' });
         }
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'focusnow_secret');
+        if (typeof novaSenha !== 'string' || novaSenha.length < 8) {
+            return res.status(400).json({ error: 'A nova senha deve ter pelo menos 8 caracteres' });
+        }
+        const hasLetter = /[A-Za-z]/.test(novaSenha);
+        const hasNumber = /\d/.test(novaSenha);
+        const hasSpecial = /[^A-Za-z0-9]/.test(novaSenha);
+        if (!(hasLetter && hasNumber && hasSpecial)) {
+            return res.status(400).json({ error: 'A nova senha deve incluir letras, números e um caractere especial' });
+        }
+
+        const decoded = jwt.verify(token, jwtSecret);
 
         if (decoded.type !== 'password_reset') {
             return res.status(400).json({ error: 'Token inválido' });

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { TimerService } from '../../services/timer.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -22,7 +22,7 @@ import { environment } from '../../../environments/environment';
   standalone: true,
   imports: [CommonModule, FormsModule, IonicModule, LogoComponent, BottomNavComponent, CycleDotsComponent]
 })
-export class TimerPage implements OnInit {
+export class TimerPage implements OnInit, OnDestroy {
   trackTitle: string = '—';
   get completedCycles() { return this.timerService.completedCycles; }
   // Auto mode and long-break tracking
@@ -39,6 +39,8 @@ export class TimerPage implements OnInit {
   private celebrate = inject(CelebrationService);
   private settings = inject(SettingsService);
   private audio = inject(AudioService);
+  private subs: Array<{ unsubscribe: () => void }> = [];
+  private sessionModalOpen = false;
 
   // Dev-only helper flag for showing celebration test buttons
   isDev = !environment.production && !!(environment as any).showCelebrationTester;
@@ -46,16 +48,18 @@ export class TimerPage implements OnInit {
   ngOnInit() {
     const snap = this.settings.getSnapshot();
     this.applySettings(snap);
-    this.settings.settings$.subscribe((s) => this.applySettings({ ...snap, ...s }));
+    this.subs.push(this.settings.settings$.subscribe((s) => this.applySettings({ ...snap, ...s })));
     // Reflect current background track in UI
-    this.audio.currentTrack$.subscribe((id) => {
+    this.subs.push(this.audio.currentTrack$.subscribe((id) => {
       const t = MUSIC_CATALOG.find(x => x.id === id);
       this.trackTitle = t ? `${t.title} - ${t.artist}` : (id || '—');
-    });
+    }));
     // Show a completion modal when a session completes (optional)
-    this.timerService.completed$.subscribe(async (phase) => {
+    this.subs.push(this.timerService.completed$.subscribe(async (phase) => {
       const show = this.settings.getSnapshot().showCompletionModal;
       if (!show) return;
+      if (this.sessionModalOpen) return; // guard against duplicates
+      this.sessionModalOpen = true;
       // Wait for any celebration modals to finish to avoid overlapping UX
       try { await (this.celebrate as any).whenIdle?.({ timeoutMs: 5000 }); } catch {}
       const modal = await this.modalCtrl.create({
@@ -64,7 +68,13 @@ export class TimerPage implements OnInit {
         cssClass: 'session-complete-modal'
       });
       await modal.present();
-    });
+      try { await modal.onDidDismiss(); } finally { this.sessionModalOpen = false; }
+    }));
+  }
+
+  ngOnDestroy(): void {
+    try { this.subs.forEach(s => { try { s.unsubscribe(); } catch {} }); } catch {}
+    this.subs = [];
   }
 
 

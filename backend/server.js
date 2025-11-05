@@ -404,6 +404,23 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// Simple health check to validate server and DB connectivity from devices
+app.get('/api/health', async (req, res) => {
+    try {
+        // Try a lightweight DB query if connection exists
+        let dbOk = false;
+        if (!db) {
+            await connectDB();
+        }
+        if (db) {
+            try { await db.execute('SELECT 1'); dbOk = true; } catch { dbOk = false; }
+        }
+        res.json({ ok: true, db: dbOk, origin: req.headers.origin || null });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e?.message || String(e) });
+    }
+});
+
 // Logout: limpa cookie
 app.post('/api/logout', (req, res) => {
     clearAuthCookie(res);

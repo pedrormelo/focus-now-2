@@ -38,6 +38,9 @@ app.use(cors({
     credentials: true
 }));
 
+// Ensure CORS preflight responses are handled for any route
+app.options('*', cors());
+
 // DB connection will be initialized after configuration and function definitions
 
 // Email setup (optional). Configure via env to enable real emails.
@@ -331,8 +334,8 @@ async function createTables() {
 
 // Rotas de Autenticação
 app.post('/api/register', async (req, res) => {
-    // Debug log (can be removed later)
-    // console.log('Register body:', req.body);
+    // Minimal debug (no sensitive data)
+    try { console.log('[REGISTER]', { email: req.body?.email, origin: req.headers?.origin || null }); } catch {}
     try {
         const { nome, email, senha, objetivo } = req.body;
 
@@ -368,6 +371,7 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
     try {
         const { email, senha } = req.body;
+        try { console.log('[LOGIN]', { email, origin: req.headers?.origin || null }); } catch {}
 
         const [users] = await db.execute('SELECT * FROM usuarios WHERE email = ?', [email]);
         if (users.length === 0) {

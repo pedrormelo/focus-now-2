@@ -13,8 +13,14 @@ export class AppComponent implements OnInit, OnDestroy {
   private sub?: Subscription;
 
   ngOnInit(): void {
+    // Enforce dark theme for all users regardless of system theme
+    this.settings.setPartial({ temaEscuro: true });
+    // Force Ionic dark palette (class-based) and Tailwind dark variants
+    document.documentElement.classList.add('ion-palette-dark');
+    document.body.classList.add('dark');
     // Apply theme on startup and whenever settings change
     this.sub = this.settings.settings$.subscribe(s => {
+      // Keep Tailwind dark class consistent (but we force it on by default)
       document.body.classList.toggle('dark', !!s.temaEscuro);
     });
   }

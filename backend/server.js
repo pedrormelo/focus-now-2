@@ -16,11 +16,22 @@ app.use(cors({
     origin: (origin, cb) => {
         // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return cb(null, true);
-        // Always allow capacitor/electron style schemes
-        if (origin.startsWith('capacitor://') || origin.startsWith('ionic://') || origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+        const o = String(origin).toLowerCase();
+        // Always allow Capacitor/Ionic style origins and localhost (both http and https)
+        if (
+            o.startsWith('capacitor://') ||
+            o.startsWith('ionic://') ||
+            o.includes('capacitor') || // covers https scheme like https://capacitor
+            o.startsWith('http://localhost') ||
+            o.startsWith('https://localhost') ||
+            o.startsWith('http://127.0.0.1') ||
+            o.startsWith('https://127.0.0.1')
+        ) {
             return cb(null, true);
         }
+        // If no explicit origins configured, allow all
         if (allowedOrigins.length === 0) return cb(null, true);
+        // Exact match to configured origins
         if (allowedOrigins.includes(origin)) return cb(null, true);
         return cb(null, false);
     },

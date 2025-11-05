@@ -32,9 +32,10 @@
  * https://ionicframework.com/docs/theming/dark-mode
  */
 
+/* Force Ionic components to use dark based on the `.dark` class rather than OS */
 /* @import "@ionic/angular/css/palettes/dark.always.css"; */
-/* @import "@ionic/angular/css/palettes/dark.class.css"; */
-@import "@ionic/angular/css/palettes/dark.system.css";
+@import "@ionic/angular/css/palettes/dark.class.css";
+/* @import "@ionic/angular/css/palettes/dark.system.css"; */
 
 /* Self-hosted Montserrat */
 @font-face {

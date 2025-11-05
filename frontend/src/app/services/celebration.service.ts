@@ -9,6 +9,7 @@ export class CelebrationService {
   private settings = inject(SettingsService);
   private queue: CelebrationType[] = [];
   private isPresenting = false;
+  private hold = false; // when true, defer presenting until released
   private lastShownAt = 0;
   private readonly debounceMs = 300; // avoid double enqueues from quick successive triggers
   private idleResolvers: Array<() => void> = [];
@@ -33,7 +34,7 @@ export class CelebrationService {
   }
 
   private async processQueue() {
-    if (this.isPresenting) return;
+    if (this.isPresenting || this.hold) return;
     const next = this.queue.shift();
     if (!next) return;
     this.isPresenting = true;
@@ -109,4 +110,9 @@ export class CelebrationService {
       try { r(); } catch {}
     }
   }
+
+  // Pause presenting new celebration modals; queued items will wait
+  holdQueue() { this.hold = true; }
+  // Resume presenting queued celebration modals
+  releaseQueue() { this.hold = false; this.processQueue(); }
 }

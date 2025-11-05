@@ -60,15 +60,21 @@ export class TimerPage implements OnInit, OnDestroy {
       if (!show) return;
       if (this.sessionModalOpen) return; // guard against duplicates
       this.sessionModalOpen = true;
-      // Wait for any celebration modals to finish to avoid overlapping UX
-      try { await (this.celebrate as any).whenIdle?.({ timeoutMs: 5000 }); } catch {}
+      // Hold celebration queue so the session-complete modal shows first
+      try { (this.celebrate as any).holdQueue?.(); } catch {}
       const modal = await this.modalCtrl.create({
         component: SessionCompleteModalComponent,
         componentProps: { phase },
         cssClass: 'session-complete-modal'
       });
       await modal.present();
-      try { await modal.onDidDismiss(); } finally { this.sessionModalOpen = false; }
+      try {
+        await modal.onDidDismiss();
+      } finally {
+        this.sessionModalOpen = false;
+        // Release celebration queue to show any pending celebrations afterwards
+        try { (this.celebrate as any).releaseQueue?.(); } catch {}
+      }
     }));
   }
 

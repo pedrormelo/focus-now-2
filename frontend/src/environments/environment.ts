@@ -7,7 +7,7 @@ export const environment = {
   showCelebrationTester: true,
   // Backend base URL (no trailing slash)
   // TIP: for device testing, set this to your laptop IP, e.g. 'http://192.168.0.42:3000'
-  apiBaseUrl: 'http://10.87.20.166:3000',
+  apiBaseUrl: 'http://10.87.20.166:3000', // MESMA COISA AQUI VCS VÃO MUDAR PARA O IP DO SEU NOTEBOOK
   //'http://localhost:3000',
   // For HTTP-only demo on LAN, disable cookies so we send Authorization header
   useCookies: false
